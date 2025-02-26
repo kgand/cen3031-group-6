@@ -1,9 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize popup content
     const content = document.getElementById('content');
     content.textContent = 'Dashboard Loaded';
   
-    // Refresh button logic
     document.getElementById('refreshBtn').addEventListener('click', function() {
       content.textContent = 'Content Refreshed';
       chrome.runtime.sendMessage({action: 'refresh'}, function(response) {
@@ -11,16 +9,13 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
   
-    // Setup feedback modal interactions
+    // Modal logic
     const feedbackModal = document.getElementById('feedbackModal');
     const submitFeedback = document.getElementById('submitFeedback');
-    
-    // Show modal on refresh button click
+    // For demonstration, show modal on click of refresh button
     document.getElementById('refreshBtn').addEventListener('click', function() {
       feedbackModal.style.display = 'block';
     });
-  
-    // Handle feedback submission
     submitFeedback.addEventListener('click', function() {
       const feedback = document.getElementById('feedbackText').value;
       console.log('Feedback submitted:', feedback);
