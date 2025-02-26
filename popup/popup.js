@@ -1,11 +1,3 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8">
-    <title>Extension Popup</title>
-  </head>
-  <body>
-    <h1>Welcome to the Extension</h1>
-    <div id="content"></div>
-  </body>
-</html>
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('content').textContent = 'Popup Loaded';
+  });
