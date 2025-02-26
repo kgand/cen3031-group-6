@@ -1,7 +1,9 @@
 const initializeBackground = async () => {
     try {
-      console.log('Background script initialized asynchronously with ES6.');
+      // Asynchronous initialization of background tasks
+      console.log('Background script initialized with ES6.');
   
+      // Listening for messages from other parts of the extension
       chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (request.action === 'refresh') {
           console.log('Processing refresh action.');
