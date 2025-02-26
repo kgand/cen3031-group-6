@@ -1,8 +1,9 @@
 import Logger from '../scripts/logger.js';
+// Assume integration of a lightweight DOM helper library
 
 document.addEventListener('DOMContentLoaded', function() {
   const content = document.getElementById('content');
-  content.textContent = 'Dashboard Loaded';
+  content.textContent = 'Dashboard Loaded with enhanced responsiveness';
 
   document.getElementById('refreshBtn').addEventListener('click', function() {
     content.textContent = 'Content Refreshed';
