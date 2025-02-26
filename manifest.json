@@ -1,10 +1,10 @@
 {
     "manifest_version": 2,
     "name": "Extension",
-    "description": "A basic browser extension.",
-    "version": "0.3.0",
+    "description": "A basic browser extension with enhanced features.",
+    "version": "0.3.1",
     "author": "Your Name",
-    "permissions": ["tabs"],
+    "permissions": ["tabs", "storage"],
     "browser_action": {
       "default_popup": "popup/popup.html",
       "default_icon": {
