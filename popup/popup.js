@@ -1,5 +1,9 @@
 import Logger from '../scripts/logger.js';
 
+function sanitizeInput(input) {
+  return input.replace(/[<>]/g, '');
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   try {
     const content = document.getElementById('content');
@@ -18,7 +22,8 @@ document.addEventListener('DOMContentLoaded', function() {
       feedbackModal.style.display = 'block';
     });
     submitFeedback.addEventListener('click', function() {
-      const feedback = document.getElementById('feedbackText').value;
+      let feedback = document.getElementById('feedbackText').value;
+      feedback = sanitizeInput(feedback);
       Logger.log('Feedback submitted:', feedback);
       feedbackModal.style.display = 'none';
     });
