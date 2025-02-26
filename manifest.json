@@ -2,7 +2,15 @@
     "manifest_version": 2,
     "name": "Extension",
     "description": "A basic browser extension.",
-    "version": "0.1.1",
+    "version": "0.2.0",
     "author": "Your Name",
-    "permissions": []
+    "permissions": [],
+    "browser_action": {
+      "default_popup": "popup/popup.html",
+      "default_icon": "images/icon48.png"
+    },
+    "background": {
+      "scripts": ["scripts/background.js"],
+      "persistent": false
+    }
   }
