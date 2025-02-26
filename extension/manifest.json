@@ -1,0 +1,54 @@
+{
+  "manifest_version": 3,
+  "name": "FaciliGator",
+  "version": "1.0",
+  "short_name": "Canvas Files",
+  "description": "A UF Canvas extension that helps students manage their learning by collecting assignment information",
+  
+  "action": {
+    "default_icon": "images/icon.png",
+    "default_popup": "popup/popup.html",
+    "default_title": "FaciliGator"
+  },
+  
+  "icons": {
+    "128": "images/icon.png"
+  },
+  
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.instructure.com/courses/*",
+        "https://*.instructure.com/courses/*"
+      ],
+      "js": ["scripts/content_canvas.js"],
+      "run_at": "document_end"
+    },
+    {
+      "matches": [
+        "*://*.instructure.com/conversations*",
+        "https://*.instructure.com/conversations*"
+      ],
+      "js": ["scripts/recording-scraper.js"],
+      "run_at": "document_end"
+    }
+  ],
+
+  "permissions": [
+    "tabs",
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+
+  "host_permissions": [
+    "*://*.instructure.com/*",
+    "https://*.instructure.com/*",
+    "*://*.zoom.us/*",
+    "https://*.zoom.us/*"
+  ],
+  
+  "background": {
+    "service_worker": "scripts/background.js"
+  }
+}

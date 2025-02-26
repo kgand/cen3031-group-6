@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FaciliGator</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" type="text/css" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1><i class="fas fa-graduation-cap"></i> FaciliGator</h1>
+        </header>
+
+        <!-- Error message container -->
+        <div id="error-container" class="error-container" style="display: none;">
+            <div class="error-content">
+                <i class="fas fa-exclamation-circle error-icon"></i>
+                <span id="error-text"></span>
+            </div>
+        </div>
+
+        <div class="main-options">
+            <div class="option-card">
+                <h2><i class="fas fa-tasks"></i> Assignments</h2>
+                <p>View and manage your course assignments.</p>
+                <button id="assignmentsButton" class="action-button">
+                    <i class="fas fa-arrow-right"></i> Go to Assignments
+                </button>
+            </div>
+
+            <div class="option-card">
+                <h2><i class="fas fa-video"></i> Zoom Recordings</h2>
+                <p>Access your course Zoom recordings.</p>
+                <button id="inboxButton" class="action-button">
+                    <i class="fas fa-arrow-right"></i> Go to Inbox
+                </button>
+            </div>
+        </div>
+
+        <!-- Progress Container -->
+        <div class="progress-container" style="display: none;">
+            <div class="progress-header">
+                <span class="progress-message"></span>
+                <span class="progress-detail"></span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-bar-fill"></div>
+            </div>
+            <div class="progress-numbers"></div>
+            <button id="stopButton" class="action-button stop-button" style="display: none;">
+                <i class="fas fa-stop"></i> Stop
+            </button>
+        </div>
+
+        <!-- Results Container -->
+        <div id="results-container" class="results-container"></div>
+
+        <!-- Stop Button -->
+        <button id="stopButton" class="action-button stop-button" style="display: none;">
+            <i class="fas fa-stop"></i> Stop Scraping
+        </button>
+
+        <footer class="footer">
+            <a href="mailto:kovidhgandreti@gmail.com?subject=FaciliGator%20Help%20Needed" class="help-link">
+                <i class="fas fa-question-circle"></i> Help
+            </a>
+        </footer>
+    </div>
+    <script src="popup.js"></script>
+</body>
+</html> 
