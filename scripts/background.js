@@ -1,10 +1,10 @@
 const initializeBackground = async () => {
     try {
-      // Initialize background processes and listen for messages
-      console.log('Background script initialized with ES6.');
+      console.log('Background script initialized asynchronously with ES6.');
+  
       chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (request.action === 'refresh') {
-          console.log('Refresh action received from popup.');
+          console.log('Processing refresh action.');
           sendResponse({status: 'refreshed'});
         }
       });
