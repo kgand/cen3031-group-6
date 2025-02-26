@@ -1,3 +1,5 @@
-document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('content').textContent = 'Popup Loaded';
-  });
+async function initializeBackground() {
+    console.log('Background script initialized asynchronously.');
+  }
+  
+  initializeBackground();
