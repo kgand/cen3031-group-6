@@ -1,8 +1,7 @@
 console.log('Content script loaded.');
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log('Message received in content script:', request);
-  // Acknowledge receipt properly
+  // Process message with minimal overhead
   sendResponse({status: 'received'});
   return true;
 });
