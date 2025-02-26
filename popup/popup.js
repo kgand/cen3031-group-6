@@ -1,5 +1,8 @@
-async function initializeBackground() {
-    console.log('Background script initialized asynchronously.');
-  }
+document.addEventListener('DOMContentLoaded', function() {
+    const content = document.getElementById('content');
+    content.textContent = 'Dashboard Loaded';
   
-  initializeBackground();
+    document.getElementById('refreshBtn').addEventListener('click', function() {
+      content.textContent = 'Content Refreshed';
+    });
+  });
