@@ -2,8 +2,9 @@
     "manifest_version": 2,
     "name": "Extension",
     "description": "A basic browser extension with enhanced features.",
-    "version": "0.3.1",
+    "version": "0.3.2",
     "author": "Your Name",
+    "update_url": "https://your-deployment-url.com/updates.xml",
     "permissions": ["tabs", "storage"],
     "browser_action": {
       "default_popup": "popup/popup.html",
