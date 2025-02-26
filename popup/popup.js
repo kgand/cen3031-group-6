@@ -4,5 +4,8 @@ document.addEventListener('DOMContentLoaded', function() {
   
     document.getElementById('refreshBtn').addEventListener('click', function() {
       content.textContent = 'Content Refreshed';
+      chrome.runtime.sendMessage({action: 'refresh'}, function(response) {
+        console.log('Background response:', response);
+      });
     });
   });
