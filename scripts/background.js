@@ -16,6 +16,12 @@ const initializeBackground = async () => {
     });
   } catch (error) {
     Logger.error('Background initialization error:', error);
+    chrome.notifications.create({
+      type: 'basic',
+      iconUrl: 'images/icon48.png',
+      title: 'Extension Error',
+      message: 'An error occurred during initialization.'
+    });
   }
 };
 
