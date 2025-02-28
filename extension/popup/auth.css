@@ -184,6 +184,36 @@ body {
     font-size: 14px;
 }
 
+/* Success Container */
+.success-container {
+    background-color: #edf7ed;
+    border-left: 4px solid #4caf50;
+    padding: 12px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    display: none;
+}
+
+.success-container.show {
+    display: block;
+}
+
+.success-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.success-content .success-icon {
+    color: #4caf50;
+    font-size: 16px;
+}
+
+#success-text {
+    color: #2e7d32;
+    font-size: 14px;
+}
+
 /* Loading Spinner */
 .loading-spinner {
     display: flex;

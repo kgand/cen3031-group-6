@@ -48,6 +48,7 @@ class Token(BaseModel):
     token_type: str
     user_id: str
     email: str
+    email_confirmation_required: Optional[bool] = None
 
 # Helper functions
 def create_access_token(data: dict, expires_delta: timedelta = None):
@@ -109,6 +110,21 @@ async def signup(user: UserCreate):
                 "full_name": user.full_name,
                 "email": user.email
             }).execute()
+        
+        # Check if email confirmation is required
+        if not response.user.email_confirmed_at:
+            # Create a token but indicate email confirmation is required
+            access_token = create_access_token(
+                data={"sub": response.user.id, "email": user.email}
+            )
+            
+            return {
+                "access_token": access_token,
+                "token_type": "bearer",
+                "user_id": response.user.id,
+                "email": user.email,
+                "email_confirmation_required": True
+            }
         
         # Create access token
         access_token = create_access_token(

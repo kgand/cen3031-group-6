@@ -166,12 +166,23 @@ const ApiUtils = {
                 return { error: data.detail || 'Registration failed' };
             }
             
-            // Store authentication data
-            await AuthUtils.setAuthToken(data.access_token);
-            await AuthUtils.setUserInfo({
-                userId: data.user_id,
-                email: data.email
-            });
+            // Check if email confirmation is required
+            if (data.email_confirmation_required) {
+                return { 
+                    success: true, 
+                    email_confirmation_required: true,
+                    message: "Please check your email to confirm your account before logging in."
+                };
+            }
+            
+            // Store authentication data if no confirmation required
+            if (data.access_token) {
+                await AuthUtils.setAuthToken(data.access_token);
+                await AuthUtils.setUserInfo({
+                    userId: data.user_id,
+                    email: data.email
+                });
+            }
             
             return { success: true, user: data };
         } catch (error) {

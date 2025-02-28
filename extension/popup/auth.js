@@ -145,6 +145,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
+            // Check if email confirmation is required
+            if (result.email_confirmation_required) {
+                // Show success message about email confirmation
+                showSuccess(result.message || 'Please check your email to confirm your account before logging in.');
+                
+                // After 5 seconds, redirect to login form
+                setTimeout(() => {
+                    setLoading(false);
+                    signupFormContainer.style.display = 'none';
+                    loginFormContainer.style.display = 'block';
+                }, 5000);
+                
+                return;
+            }
+            
             // Redirect to main popup on successful signup
             window.location.href = 'popup.html';
         } catch (error) {
@@ -254,5 +269,41 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             strengthMeter.style.backgroundColor = '#4caf50'; // Green
         }
+    }
+    
+    // Show success message
+    function showSuccess(message) {
+        // Create success container if it doesn't exist
+        let successContainer = document.getElementById('success-container');
+        if (!successContainer) {
+            successContainer = document.createElement('div');
+            successContainer.id = 'success-container';
+            successContainer.className = 'success-container';
+            
+            const successContent = document.createElement('div');
+            successContent.className = 'success-content';
+            
+            const successIcon = document.createElement('i');
+            successIcon.className = 'fas fa-check-circle success-icon';
+            
+            const successText = document.createElement('span');
+            successText.id = 'success-text';
+            
+            successContent.appendChild(successIcon);
+            successContent.appendChild(successText);
+            successContainer.appendChild(successContent);
+            
+            // Insert after error container
+            const errorContainer = document.getElementById('error-container');
+            errorContainer.parentNode.insertBefore(successContainer, errorContainer.nextSibling);
+        }
+        
+        // Update success message
+        const successText = document.getElementById('success-text');
+        successText.textContent = message;
+        successContainer.style.display = 'block';
+        
+        // Hide error container if visible
+        errorContainer.style.display = 'none';
     }
 }); 
