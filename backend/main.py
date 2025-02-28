@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from pydantic import BaseModel
 from typing import Optional
 import os
@@ -95,9 +95,66 @@ async def get_current_user(request: Request):
     return {"user_id": user_id, "email": payload.get("email")}
 
 # Routes
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 async def root():
-    return {"message": "Welcome to FaciliGator API"}
+    html_content = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>FaciliGator API</title>
+        <style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                background: #f8f9fa;
+                color: #333;
+                text-align: center;
+                padding: 40px 20px;
+                line-height: 1.6;
+            }
+            .container {
+                max-width: 600px;
+                margin: 0 auto;
+                background: white;
+                border-radius: 8px;
+                padding: 30px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            }
+            h1 {
+                color: #1a73e8;
+                margin-bottom: 20px;
+            }
+            .logo {
+                font-size: 48px;
+                color: #1a73e8;
+                margin-bottom: 20px;
+            }
+            p {
+                margin-bottom: 20px;
+                color: #555;
+            }
+            .button {
+                display: inline-block;
+                background-color: #1a73e8;
+                color: white;
+                text-decoration: none;
+                padding: 12px 24px;
+                border-radius: 4px;
+                font-weight: 500;
+                margin-top: 20px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="logo">🐊</div>
+            <h1>FaciliGator API</h1>
+            <p>Welcome to the FaciliGator API server. This is the backend for the FaciliGator Chrome Extension.</p>
+            <p>If you're seeing this page after confirming your email, please return to the extension to log in.</p>
+        </div>
+    </body>
+    </html>
+    """
+    return html_content
 
 @app.post("/auth/signup", response_model=Token)
 async def signup(user: UserCreate):

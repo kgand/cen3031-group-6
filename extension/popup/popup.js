@@ -47,6 +47,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to initialize the app after authentication check
     function initializeApp() {
+        // Get user info and update UI
+        updateUserInfo();
+        
         // Reset scraping state on popup open
         chrome.storage.local.get(['scrapingState'], function(result) {
             // Check if there's an active scraping state
@@ -112,6 +115,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Add logout button event listener
         if (logoutButton) {
+            console.log('Adding logout button event listener');
             logoutButton.addEventListener('click', handleLogout);
         }
 
@@ -899,23 +903,56 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to handle logout
     async function handleLogout() {
+        const logoutButton = document.getElementById('logoutButton');
+        
         try {
             // Show loading state
             logoutButton.disabled = true;
             logoutButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging out...';
             
+            console.log('Logging out...');
+            
             // Call the logout API
             const result = await ApiUtils.logout();
+            console.log('Logout result:', result);
             
             // Redirect to auth page
             window.location.href = 'auth.html';
         } catch (error) {
             console.error('Logout error:', error);
-            showError('Failed to logout. Please try again.');
+            
+            // Show error message if available
+            if (document.getElementById('error-text')) {
+                document.getElementById('error-container').style.display = 'block';
+                document.getElementById('error-text').textContent = 'Failed to logout. Please try again.';
+            } else {
+                alert('Failed to logout. Please try again.');
+            }
             
             // Reset button state
             logoutButton.disabled = false;
             logoutButton.innerHTML = '<i class="fas fa-sign-out-alt"></i> Logout';
+        }
+    }
+
+    // Add a new function to update user info in the UI
+    async function updateUserInfo() {
+        try {
+            // Get user info from storage
+            const userInfo = await ApiUtils.getUserInfo();
+            
+            // Update logout button with user name if available
+            const logoutButton = document.getElementById('logoutButton');
+            if (logoutButton && userInfo && userInfo.email) {
+                // Get the first part of the email (before @) as fallback
+                const displayName = userInfo.fullName || userInfo.email.split('@')[0];
+                logoutButton.innerHTML = `
+                    <span class="user-name">${displayName}</span>
+                    <i class="fas fa-sign-out-alt"></i>
+                `;
+            }
+        } catch (error) {
+            console.error('Error updating user info:', error);
         }
     }
 }); 

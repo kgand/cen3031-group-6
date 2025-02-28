@@ -3,6 +3,7 @@ from fastapi.responses import RedirectResponse, HTMLResponse
 import os
 from dotenv import load_dotenv
 import logging
+import re
 
 # Configure logging
 logging.basicConfig(
@@ -34,12 +35,21 @@ async def auth_callback(request: Request):
         # Log the callback
         logger.info(f"Auth callback received: {request.url}")
         
+        # Extract the token from the URL if present
+        url_str = str(request.url)
+        token_match = re.search(r'access_token=([^&]+)', url_str)
+        token = token_match.group(1) if token_match else None
+        
+        if token:
+            logger.info(f"Token found in callback URL")
+        
         # Create HTML that redirects to the extension's confirmation success page
         html_content = """
         <!DOCTYPE html>
         <html>
         <head>
             <title>Email Confirmed - FaciliGator</title>
+            <meta http-equiv="refresh" content="5;url=chrome-extension://{extension_id}/popup/confirmation-success.html">
             <style>
                 body {
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
@@ -85,6 +95,16 @@ async def auth_callback(request: Request):
                     color: #666;
                     margin-top: 30px;
                 }
+                .redirect-link {
+                    display: inline-block;
+                    margin-top: 20px;
+                    color: #1a73e8;
+                    text-decoration: none;
+                    font-weight: 500;
+                }
+                .redirect-link:hover {
+                    text-decoration: underline;
+                }
             </style>
         </head>
         <body>
@@ -93,16 +113,22 @@ async def auth_callback(request: Request):
                 <h1>Email Confirmed Successfully!</h1>
                 <p>Your email has been confirmed and your account is now active.</p>
                 <p>You can now return to the FaciliGator extension and log in to access all features.</p>
-                <p class="note">This window can be closed.</p>
+                <p>You will be automatically redirected to the extension in 5 seconds.</p>
+                <a href="chrome-extension://{extension_id}/popup/confirmation-success.html" class="redirect-link">
+                    Click here if you are not redirected automatically
+                </a>
+                <p class="note">This window can be closed after redirection.</p>
             </div>
             <script>
                 // Attempt to open the extension if possible
-                try {
-                    // Try to open the extension's confirmation success page
-                    window.open('chrome-extension://{extension_id}/popup/confirmation-success.html', '_blank');
-                } catch (e) {
-                    console.error('Could not open extension:', e);
-                }
+                setTimeout(function() {
+                    try {
+                        // Try to open the extension's confirmation success page
+                        window.location.href = 'chrome-extension://{extension_id}/popup/confirmation-success.html';
+                    } catch (e) {
+                        console.error('Could not open extension:', e);
+                    }
+                }, 5000);
             </script>
         </body>
         </html>

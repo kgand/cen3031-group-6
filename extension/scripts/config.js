@@ -140,9 +140,15 @@ const ApiUtils = {
             
             // Store authentication data
             await AuthUtils.setAuthToken(data.access_token);
+            
+            // Get user's name from email (before the @ symbol) as fallback
+            const displayName = email.split('@')[0];
+            
+            // Store user info
             await AuthUtils.setUserInfo({
                 userId: data.user_id,
-                email: data.email
+                email: data.email,
+                fullName: data.full_name || displayName
             });
             
             return { success: true, user: data };
@@ -195,9 +201,14 @@ const ApiUtils = {
             // Store authentication data if no confirmation required
             if (data.access_token) {
                 await AuthUtils.setAuthToken(data.access_token);
+                
+                // Get user's name from email (before the @ symbol) as fallback
+                const displayName = email.split('@')[0];
+                
                 await AuthUtils.setUserInfo({
                     userId: data.user_id,
-                    email: data.email
+                    email: data.email,
+                    fullName: fullName || displayName
                 });
             }
             
@@ -223,6 +234,34 @@ const ApiUtils = {
             // Still clear local storage even if API call fails
             await AuthUtils.logout();
             return { success: true };
+        }
+    },
+    
+    // Get user information
+    getUserInfo: async () => {
+        try {
+            // First try to get from storage
+            const userInfo = await AuthUtils.getUserInfo();
+            
+            // If we have user info in storage, return it
+            if (userInfo) {
+                return userInfo;
+            }
+            
+            // If not in storage, try to get from API
+            const result = await ApiUtils.authenticatedRequest(CONFIG.AUTH.ME);
+            
+            if (result.error) {
+                return null;
+            }
+            
+            // Store the user info
+            await AuthUtils.setUserInfo(result);
+            
+            return result;
+        } catch (error) {
+            console.error('Error getting user info:', error);
+            return null;
         }
     }
 };

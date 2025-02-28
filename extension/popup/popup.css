@@ -526,4 +526,13 @@ body {
 .logout-button:hover {
     color: #d32f2f;
     background-color: rgba(211, 47, 47, 0.1);
+}
+
+.user-name {
+    font-weight: 500;
+    margin-right: 5px;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 } 

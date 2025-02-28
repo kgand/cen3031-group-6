@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logout Module Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #0d62d1;
+        }
+        .logout-button {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        h1 {
+            color: #1a73e8;
+        }
+        .container {
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Logout Module Test</h1>
+    <p>This page tests the logout functionality using the logout.js module.</p>
+    
+    <div class="container">
+        <button id="logoutButton" class="logout-button">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
+    </div>
+    
+    <script type="module">
+        import { handleLogout } from './logout.js';
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const logoutButton = document.getElementById('logoutButton');
+            
+            if (logoutButton) {
+                console.log('Adding logout button event listener from test page');
+                logoutButton.addEventListener('click', handleLogout);
+            }
+        });
+    </script>
+</body>
+</html> 
