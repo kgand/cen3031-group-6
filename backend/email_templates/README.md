@@ -99,4 +99,24 @@ This directory includes the following email templates:
 ### invite_user.html
 - **Purpose**: Sent when inviting new users to join FaciliGator
 - **Key Features**: Product benefits overview, welcoming tone, clear next steps
-- **Suggested Subject**: "You're Invited to Join FaciliGator" 
+- **Suggested Subject**: "You're Invited to Join FaciliGator"
+
+## Email Deliverability Best Practices
+
+These templates have been optimized for better email deliverability to reduce the chance of being marked as spam:
+
+1. **Simple HTML Structure**: Clean, straightforward HTML without excessive styling or complex elements
+2. **Standard Fonts**: Using web-safe fonts like Arial instead of custom fonts
+3. **Minimal CSS**: Inline CSS with only essential styling
+4. **Balanced Text-to-HTML Ratio**: Appropriate amount of text relative to HTML code
+5. **Clear Sender Identity**: Clear identification of FaciliGator as the sender
+6. **Appropriate Language**: Avoiding spam trigger words and excessive punctuation
+7. **Consistent Branding**: Maintaining UF colors and branding without excessive images
+8. **Mobile-Friendly Design**: Responsive layout that works well on all devices
+
+For further improvements to deliverability:
+
+- Consider setting up SPF, DKIM, and DMARC records for your sending domain
+- Use a reputable email service provider through Supabase's SMTP configuration
+- Monitor delivery rates and spam placement through your email service provider
+- Test emails with tools like mail-tester.com before sending to users 
