@@ -1,0 +1,49 @@
+# Build artifacts
+dist/
+build/
+*.zip
+*.crx
+*.pem
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+.pnpm-debug.log
+.yarn-integrity
+.npm
+
+# Environment variables and secrets
+.env
+.env.*
+config.local.js
+secrets.js
+
+# IDE and editor files
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Chrome Extension specific
+key.pem
+*.crx
+*.pem
+*.zip
+web-ext-artifacts/ 

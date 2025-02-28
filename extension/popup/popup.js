@@ -1,4 +1,10 @@
+// Import the authentication utilities
+import { redirectIfNotAuthenticated } from '../scripts/auth-check.js';
+
 document.addEventListener('DOMContentLoaded', function() {
+    // Check if user is authenticated
+    checkAuth();
+    
     // Initialize UI elements
     const assignmentsButton = document.getElementById('assignmentsButton');
     const inboxButton = document.getElementById('inboxButton');
@@ -24,52 +30,87 @@ document.addEventListener('DOMContentLoaded', function() {
     let isScrapingActive = false;
     let currentScrapingType = null; // 'assignments' or 'recordings'
 
-    // Reset scraping state on popup open
-    chrome.storage.local.get(['scrapingState'], function(result) {
-        // Check if there's an active scraping state
-        if (result.scrapingState && result.scrapingState.isActive) {
-            // Verify scraping is actually ongoing by checking with content script
-            chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-                if (tabs[0]) {
-                    chrome.tabs.sendMessage(tabs[0].id, { action: 'checkScrapingStatus' }, response => {
-                        if (response && response.isActive) {
-                            // Scraping is actually ongoing, restore state
-                            isScrapingActive = true;
-                            currentScrapingType = result.scrapingState.type;
-                            updateButtonStates(true);
-                            setLoading(true, result.scrapingState.type);
-                            if (result.scrapingState.current !== undefined && result.scrapingState.total !== undefined) {
-                                updateProgressUI(
-                                    result.scrapingState.current,
-                                    result.scrapingState.total,
-                                    result.scrapingState.currentTitle
-                                );
-                            }
-                            // Ensure stop button is visible and enabled
-                            if (stopButton) {
-                                stopButton.style.display = 'block';
-                                stopButton.disabled = false;
-                            }
-                            // Disable action buttons
-                            if (assignmentsButton) assignmentsButton.disabled = true;
-                            if (inboxButton) inboxButton.disabled = true;
-                            if (goToAssignmentsBtn) goToAssignmentsBtn.disabled = true;
-                            if (goToInboxBtn) goToInboxBtn.disabled = true;
-                        } else {
-                            // Scraping is not actually active, reset state
-                            resetScrapingState();
-                        }
-                    });
-                } else {
-                    // No active tab, reset state
-                    resetScrapingState();
-                }
-            });
-        } else {
-            // No scraping state, ensure UI is reset
-            resetScrapingState();
+    // Function to check authentication
+    async function checkAuth() {
+        try {
+            const isAuthenticated = await redirectIfNotAuthenticated();
+            if (isAuthenticated) {
+                // User is authenticated, initialize the app
+                initializeApp();
+            }
+        } catch (error) {
+            console.error('Authentication check error:', error);
         }
-    });
+    }
+    
+    // Function to initialize the app after authentication check
+    function initializeApp() {
+        // Reset scraping state on popup open
+        chrome.storage.local.get(['scrapingState'], function(result) {
+            // Check if there's an active scraping state
+            if (result.scrapingState && result.scrapingState.isActive) {
+                // Verify scraping is actually ongoing by checking with content script
+                chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+                    if (tabs[0]) {
+                        chrome.tabs.sendMessage(tabs[0].id, { action: 'checkScrapingStatus' }, response => {
+                            if (response && response.isActive) {
+                                // Scraping is actually ongoing, restore state
+                                isScrapingActive = true;
+                                currentScrapingType = result.scrapingState.type;
+                                updateButtonStates(true);
+                                setLoading(true, result.scrapingState.type);
+                                if (result.scrapingState.current !== undefined && result.scrapingState.total !== undefined) {
+                                    updateProgressUI(
+                                        result.scrapingState.current,
+                                        result.scrapingState.total,
+                                        result.scrapingState.currentTitle
+                                    );
+                                }
+                                // Ensure stop button is visible and enabled
+                                if (stopButton) {
+                                    stopButton.style.display = 'block';
+                                    stopButton.disabled = false;
+                                }
+                                // Disable action buttons
+                                if (assignmentsButton) assignmentsButton.disabled = true;
+                                if (inboxButton) inboxButton.disabled = true;
+                                if (goToAssignmentsBtn) goToAssignmentsBtn.disabled = true;
+                                if (goToInboxBtn) goToInboxBtn.disabled = true;
+                            } else {
+                                // Scraping is not actually active, reset state
+                                resetScrapingState();
+                            }
+                        });
+                    } else {
+                        // No active tab, reset state
+                        resetScrapingState();
+                    }
+                });
+            } else {
+                // No scraping state, ensure UI is reset
+                resetScrapingState();
+            }
+        });
+
+        // Check current page to enable/disable appropriate buttons
+        checkCurrentPage();
+
+        // Add event listeners
+        if (assignmentsButton) {
+            assignmentsButton.addEventListener('click', handleAssignmentsClick);
+        }
+
+        if (inboxButton) {
+            inboxButton.addEventListener('click', handleInboxClick);
+        }
+
+        if (stopButton) {
+            stopButton.addEventListener('click', handleStopClick);
+        }
+
+        // Add URL hash change listener to detect course selection in inbox
+        window.addEventListener('hashchange', checkCurrentPage);
+    }
 
     // Function to reset all scraping state and UI
     function resetScrapingState() {
