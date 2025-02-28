@@ -86,9 +86,23 @@ document.addEventListener('DOMContentLoaded', function() {
         // Attempt login
         try {
             const result = await ApiUtils.login(email, password);
+            console.log('Login result:', result);
+            
+            // Check if email confirmation is required
+            if (result.email_confirmation_required) {
+                // Show success message about email confirmation
+                showSuccess(result.error || 'Please check your email to confirm your account before logging in.');
+                setLoading(false);
+                return;
+            }
             
             if (result.error) {
-                showError(result.error);
+                // Check if the error is about incorrect credentials
+                if (result.error.includes("Incorrect email or password")) {
+                    showError('Incorrect email or password. Please try again or sign up if you don\'t have an account.');
+                } else {
+                    showError(result.error);
+                }
                 setLoading(false);
                 return;
             }
@@ -110,7 +124,9 @@ document.addEventListener('DOMContentLoaded', function() {
     signupForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         
-        const fullName = document.getElementById('signup-name').value;
+        const firstName = document.getElementById('signup-first-name').value.trim();
+        const lastName = document.getElementById('signup-last-name').value.trim();
+        const fullName = firstName && lastName ? `${firstName} ${lastName}` : '';
         const email = document.getElementById('signup-email').value;
         const password = document.getElementById('signup-password').value;
         const confirmPassword = document.getElementById('signup-confirm-password').value;
@@ -119,6 +135,21 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!email || !password || !confirmPassword) {
             showError('Please fill in all required fields');
             return;
+        }
+        
+        // Validate name format if provided
+        if ((firstName && !lastName) || (!firstName && lastName)) {
+            showError('Please provide both first and last name or leave both empty');
+            return;
+        }
+        
+        if (firstName && lastName) {
+            // Check that names contain only letters, spaces, hyphens, and apostrophes
+            const nameRegex = /^[A-Za-z\s\-']+$/;
+            if (!nameRegex.test(firstName) || !nameRegex.test(lastName)) {
+                showError('Names should contain only letters, spaces, hyphens, and apostrophes');
+                return;
+            }
         }
         
         if (password !== confirmPassword) {
@@ -138,9 +169,34 @@ document.addEventListener('DOMContentLoaded', function() {
         // Attempt signup
         try {
             const result = await ApiUtils.signup(email, password, fullName);
+            console.log('Signup result:', result);
             
             if (result.error) {
-                showError(result.error);
+                // Check if the error is about an existing user
+                if (result.error.includes("already exists")) {
+                    showError('This email is already registered. Please try logging in instead.');
+                    
+                    // After 3 seconds, switch to login form
+                    setTimeout(() => {
+                        signupFormContainer.style.display = 'none';
+                        loginFormContainer.style.display = 'block';
+                    }, 3000);
+                } 
+                // Check if the error indicates that the account was created but there was an issue
+                else if (result.error.includes("Account created") || result.error.includes("check your email")) {
+                    // Show success message about email confirmation
+                    showSuccess('Your account has been created. Please check your email for a confirmation link.');
+                    
+                    // After 5 seconds, redirect to login form
+                    setTimeout(() => {
+                        setLoading(false);
+                        signupFormContainer.style.display = 'none';
+                        loginFormContainer.style.display = 'block';
+                    }, 5000);
+                } 
+                else {
+                    showError(result.error);
+                }
                 setLoading(false);
                 return;
             }

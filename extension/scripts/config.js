@@ -127,6 +127,14 @@ const ApiUtils = {
             const data = await response.json();
             
             if (!response.ok) {
+                console.error('Login error response:', data);
+                // Check if the error is about unconfirmed email
+                if (data.detail && data.detail.includes("Email not confirmed")) {
+                    return { 
+                        error: data.detail,
+                        email_confirmation_required: true
+                    };
+                }
                 return { error: data.detail || 'Login failed' };
             }
             
@@ -163,6 +171,15 @@ const ApiUtils = {
             const data = await response.json();
             
             if (!response.ok) {
+                console.error('Signup error response:', data);
+                // Check if the error indicates that the account was created but there was an issue
+                if (data.detail && (data.detail.includes("Account created") || data.detail.includes("check your email"))) {
+                    return { 
+                        success: true, 
+                        email_confirmation_required: true,
+                        message: data.detail
+                    };
+                }
                 return { error: data.detail || 'Registration failed' };
             }
             
