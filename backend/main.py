@@ -270,6 +270,11 @@ if importlib.util.find_spec("render"):
     import render
     app.include_router(render.router)
 
+# Import and include the confirmation module
+if importlib.util.find_spec("confirmation"):
+    import confirmation
+    app.include_router(confirmation.router)
+
 # Run the app with uvicorn
 if __name__ == "__main__":
     import uvicorn

@@ -1,5 +1,6 @@
 // Import the authentication utilities
 import { redirectIfNotAuthenticated } from '../scripts/auth-check.js';
+import { ApiUtils } from '../scripts/config.js';
 
 document.addEventListener('DOMContentLoaded', function() {
     // Check if user is authenticated
@@ -9,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const assignmentsButton = document.getElementById('assignmentsButton');
     const inboxButton = document.getElementById('inboxButton');
     const stopButton = document.getElementById('stopButton');
+    const logoutButton = document.getElementById('logoutButton');
     const resultsContainer = document.getElementById('results-container');
     const loadingSpinner = document.getElementById('loading-spinner');
     const assignmentsList = document.getElementById('assignments-list');
@@ -106,6 +108,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (stopButton) {
             stopButton.addEventListener('click', handleStopClick);
+        }
+        
+        // Add logout button event listener
+        if (logoutButton) {
+            logoutButton.addEventListener('click', handleLogout);
         }
 
         // Add URL hash change listener to detect course selection in inbox
@@ -889,4 +896,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Add URL hash change listener to detect course selection in inbox
     window.addEventListener('hashchange', checkCurrentPage);
+
+    // Function to handle logout
+    async function handleLogout() {
+        try {
+            // Show loading state
+            logoutButton.disabled = true;
+            logoutButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging out...';
+            
+            // Call the logout API
+            const result = await ApiUtils.logout();
+            
+            // Redirect to auth page
+            window.location.href = 'auth.html';
+        } catch (error) {
+            console.error('Logout error:', error);
+            showError('Failed to logout. Please try again.');
+            
+            // Reset button state
+            logoutButton.disabled = false;
+            logoutButton.innerHTML = '<i class="fas fa-sign-out-alt"></i> Logout';
+        }
+    }
 }); 

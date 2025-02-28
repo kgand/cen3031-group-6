@@ -126,7 +126,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const firstName = document.getElementById('signup-first-name').value.trim();
         const lastName = document.getElementById('signup-last-name').value.trim();
-        const fullName = firstName && lastName ? `${firstName} ${lastName}` : '';
+        
+        // Format names with proper capitalization if provided
+        const formattedFirstName = firstName ? formatName(firstName) : '';
+        const formattedLastName = lastName ? formatName(lastName) : '';
+        
+        const fullName = formattedFirstName && formattedLastName ? `${formattedFirstName} ${formattedLastName}` : '';
         const email = document.getElementById('signup-email').value;
         const password = document.getElementById('signup-password').value;
         const confirmPassword = document.getElementById('signup-confirm-password').value;
@@ -340,7 +345,7 @@ document.addEventListener('DOMContentLoaded', function() {
             successContent.className = 'success-content';
             
             const successIcon = document.createElement('i');
-            successIcon.className = 'fas fa-check-circle success-icon';
+            successIcon.className = 'fas fa-exclamation-circle success-icon';
             
             const successText = document.createElement('span');
             successText.id = 'success-text';
@@ -361,5 +366,29 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Hide error container if visible
         errorContainer.style.display = 'none';
+    }
+
+    // Helper function to format names with proper capitalization
+    function formatName(name) {
+        // Handle hyphenated names, apostrophes, and multi-word names
+        return name.split(/[\s-]+/).map(part => {
+            if (part.includes("'")) {
+                // Handle names with apostrophes like O'Brien
+                return part.split("'").map((segment, index) => {
+                    // Capitalize first letter of each segment, except after apostrophe if it's lowercase
+                    if (index === 0 || segment.length === 0) {
+                        return segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase();
+                    } else {
+                        // For parts after apostrophe, preserve case (e.g., O'Brien not O'brien)
+                        return segment;
+                    }
+                }).join("'");
+            } else {
+                // Regular capitalization for other name parts
+                return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+            }
+        }).join("-").split(" ").map(part => 
+            part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+        ).join(" ");
     }
 }); 

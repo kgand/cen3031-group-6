@@ -12,8 +12,10 @@ body {
 }
 
 .header {
-    text-align: center;
-    margin-bottom: 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
 }
 
 .header h1 {
@@ -499,4 +501,29 @@ body {
 .recording-item .item-details i {
     color: #1a73e8;
     font-size: 14px;
+}
+
+/* Logout button */
+.user-controls {
+    display: flex;
+    align-items: center;
+}
+
+.logout-button {
+    background-color: transparent;
+    color: #666;
+    border: none;
+    padding: 5px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: color 0.3s;
+    border-radius: 4px;
+}
+
+.logout-button:hover {
+    color: #d32f2f;
+    background-color: rgba(211, 47, 47, 0.1);
 } 
