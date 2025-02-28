@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>You're Invited to FaciliGator</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .logo {
+            max-width: 150px;
+            margin-bottom: 10px;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .button {
+            display: inline-block;
+            background-color: #FA4616; /* UF Orange */
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .button:hover {
+            background-color: #E03E14;
+        }
+        .footer {
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            font-size: 12px;
+            color: #777;
+        }
+        .link {
+            word-break: break-all;
+            color: #0021A5; /* UF Blue */
+        }
+        .features {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .feature-item {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="https://www.ufl.edu/media/wwwufledu/images/nav/academics.svg" alt="FaciliGator Logo" class="logo">
+            <h2>You're Invited to FaciliGator</h2>
+            <p>Your Canvas Learning Assistant</p>
+        </div>
+        
+        <div class="content">
+            <p>Hello,</p>
+            
+            <p>You've been invited to join <strong>FaciliGator</strong>, a Chrome extension designed to enhance your Canvas learning experience at the University of Florida.</p>
+            
+            <div class="features">
+                <h3>With FaciliGator, you can:</h3>
+                <div class="feature-item">✅ Easily access Zoom recordings for your courses</div>
+                <div class="feature-item">✅ Manage your assignments and deadlines more efficiently</div>
+                <div class="feature-item">✅ Enhance your Canvas experience with UF-specific features</div>
+            </div>
+            
+            <p>To accept this invitation and create your account, please click the button below:</p>
+            
+            <div style="text-align: center;">
+                <a href="{{ .ConfirmationURL }}" class="button">Accept Invitation</a>
+            </div>
+            
+            <p>If you're having trouble with the button above, copy and paste the following link into your browser:</p>
+            
+            <p class="link">{{ .ConfirmationURL }}</p>
+            
+            <p>This invitation link will expire in 7 days. If you have any questions or need assistance, please contact our support team.</p>
+            
+            <p>We're excited to have you join the FaciliGator community!</p>
+            
+            <p>Best regards,<br>The FaciliGator Team</p>
+        </div>
+        
+        <div class="footer">
+            <p>&copy; 2023 FaciliGator - University of Florida</p>
+            <p>This is an automated message, please do not reply directly to this email.</p>
+            <p>If you need assistance, contact <a href="mailto:support@facilitgator.ufl.edu">support@facilitgator.ufl.edu</a></p>
+        </div>
+    </div>
+</body>
+</html> 

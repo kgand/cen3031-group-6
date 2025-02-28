@@ -58,4 +58,20 @@ When contributing to this project, please ensure you follow these guidelines:
 
 ## License
 
-[Add your license information here] 
+[Add your license information here]
+
+## Email Templates
+
+FaciliGator uses custom email templates for authentication flows to provide a professional and branded experience. These templates are located in the `backend/email_templates` directory.
+
+To update the email templates in Supabase:
+
+1. Log in to your [Supabase Dashboard](https://app.supabase.com/)
+2. Navigate to **Authentication** > **Email Templates**
+3. Select the template you want to update (e.g., Confirm Signup)
+4. Copy the HTML from the corresponding file in `backend/email_templates`
+5. Paste it into the template editor in Supabase
+6. Update the subject line to match the template purpose
+7. Save the changes
+
+For more detailed instructions, see the [Email Templates README](backend/email_templates/README.md). 
