@@ -261,4 +261,14 @@ body {
 
 .help-link:hover {
     color: #1a73e8;
+}
+
+/* Name fields layout */
+.name-fields {
+    display: flex;
+    gap: 10px;
+}
+
+.name-fields .form-group {
+    flex: 1;
 } 
