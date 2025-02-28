@@ -1,12 +1,34 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
-
-# Import the get_current_user dependency from main.py
-from .main import get_current_user
+import jwt
+import os
 
 # Create a router for render-related endpoints
 router = APIRouter(prefix="/render", tags=["render"])
+
+# Authentication dependency
+async def get_current_user(request):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise credentials_exception
+    
+    token = auth_header.split(" ")[1]
+    try:
+        JWT_SECRET = os.getenv("JWT_SECRET")
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+        return {"user_id": user_id, "email": payload.get("email")}
+    except jwt.PyJWTError:
+        raise credentials_exception
 
 # Models
 class RenderRequest(BaseModel):

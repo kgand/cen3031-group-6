@@ -96,8 +96,12 @@ document.addEventListener('DOMContentLoaded', function() {
             // Redirect to main popup on successful login
             window.location.href = 'popup.html';
         } catch (error) {
-            showError('An unexpected error occurred. Please try again.');
             console.error('Login error:', error);
+            if (error.message && error.message.includes('Failed to fetch')) {
+                showError('Cannot connect to the server. Please check if the backend is running.');
+            } else {
+                showError('An unexpected error occurred. Please try again.');
+            }
             setLoading(false);
         }
     });
@@ -144,8 +148,12 @@ document.addEventListener('DOMContentLoaded', function() {
             // Redirect to main popup on successful signup
             window.location.href = 'popup.html';
         } catch (error) {
-            showError('An unexpected error occurred. Please try again.');
             console.error('Signup error:', error);
+            if (error.message && error.message.includes('Failed to fetch')) {
+                showError('Cannot connect to the server. Please check if the backend is running.');
+            } else {
+                showError('An unexpected error occurred. Please try again.');
+            }
             setLoading(false);
         }
     });

@@ -170,8 +170,8 @@ async def logout(current_user: dict = Depends(get_current_user)):
     return {"message": "Successfully logged out"}
 
 # Import and include the render module
-if importlib.util.find_spec("backend.render"):
-    from backend import render
+if importlib.util.find_spec("render"):
+    import render
     app.include_router(render.router)
 
 # Run the app with uvicorn

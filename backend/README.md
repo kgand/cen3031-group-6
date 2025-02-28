@@ -1,26 +1,50 @@
-# FaciliGator Backend API
+# FaciliGator Backend
 
-This is the backend API for the FaciliGator Chrome Extension, providing authentication and data services.
+This is the backend API for the FaciliGator Chrome Extension, built with FastAPI and Supabase authentication.
 
-## Setup
+## Setup Instructions
 
-1. Clone the repository
-2. Create a virtual environment:
+1. Create a virtual environment:
    ```
    python -m venv venv
    ```
-3. Activate the virtual environment:
+
+2. Activate the virtual environment:
    - Windows: `venv\Scripts\activate`
-   - macOS/Linux: `source venv/bin/activate`
-4. Install dependencies:
+   - Mac/Linux: `source venv/bin/activate`
+
+3. Install dependencies:
    ```
    pip install -r requirements.txt
    ```
-5. Create a `.env` file based on `.env.example` and fill in your Supabase credentials
-6. Run the server:
+
+4. Create a `.env` file based on `.env.example` and fill in your Supabase credentials and JWT secret.
+
+5. Run the server:
    ```
-   python main.py
+   uvicorn main:app --reload
    ```
+
+## Troubleshooting
+
+### Dependency Conflicts
+
+If you encounter dependency conflicts with httpx and supabase, ensure you're using compatible versions:
+- supabase 1.0.4 requires httpx>=0.24.0,<0.25.0
+- Make sure gotrue is installed: `pip install gotrue`
+
+### Authentication Issues
+
+If you encounter authentication issues:
+1. Check that your Supabase URL and key are correct in the `.env` file
+2. Ensure your JWT_SECRET is set and consistent
+3. Verify that the client is sending the correct Authorization header
+
+## API Documentation
+
+When the server is running, you can access the API documentation at:
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
 
 ## API Endpoints
 

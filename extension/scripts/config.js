@@ -72,6 +72,10 @@ const ApiUtils = {
     authenticatedRequest: async (endpoint, method = 'GET', data = null) => {
         const token = await AuthUtils.getAuthToken();
         
+        if (!token) {
+            return { error: 'Not authenticated. Please log in.' };
+        }
+        
         const options = {
             method,
             headers: {
@@ -102,6 +106,9 @@ const ApiUtils = {
             return result;
         } catch (error) {
             console.error('API request error:', error);
+            if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+                return { error: 'Cannot connect to the server. Please check your connection or server status.' };
+            }
             return { error: 'Network error. Please try again.' };
         }
     },
