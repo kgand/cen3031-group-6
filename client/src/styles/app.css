@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "HelveticaNeue", "sans-serif";
+  --color-blue-500: #2992ff;
+  --color-primary-900: #1a1a1a;
+  --color-primary-800: #242424;
+  --color-primary-700: #343434;
+  --color-primary-600: #404040;
+  --color-primary-500: #4a4a4a;
+  --color-primary-400: #898989;
+  --color-primary-300: #c1c1c1;
+  --color-primary-200: #e1e1e1;
+  --color-primary-100: #f1f1f1;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-primary-900);
+  color: var(--color-primary-100);
+}
+
+.h {
+  filter: blur(40px);
+}
+
+.bs {
+  box-shadow: 0 0 0px #2992ff;
+  transition: all 200ms;
+}
+
+.bs:hover {
+  /* Intensify box-shadow on hover */
+  box-shadow: 0 0 20px #2992ff;
+}
+
+.fade {
+    background: linear-gradient(180deg, #aaaaaa 0%, #aaaaaa00 70.86%);
+}
