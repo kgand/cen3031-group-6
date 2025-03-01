@@ -945,7 +945,16 @@ document.addEventListener('DOMContentLoaded', function() {
             const logoutButton = document.getElementById('logoutButton');
             if (logoutButton && userInfo && userInfo.email) {
                 // Get the first part of the email (before @) as fallback
-                const displayName = userInfo.fullName || userInfo.email.split('@')[0];
+                let displayName = userInfo.email.split('@')[0];
+                
+                // If we have a full name, format it properly
+                if (userInfo.fullName) {
+                    // Format name as "First Last" with proper capitalization
+                    displayName = userInfo.fullName.split(' ')
+                        .map(name => name.charAt(0).toUpperCase() + name.slice(1).toLowerCase())
+                        .join(' ');
+                }
+                
                 logoutButton.innerHTML = `
                     <span class="user-name">${displayName}</span>
                     <i class="fas fa-sign-out-alt"></i>

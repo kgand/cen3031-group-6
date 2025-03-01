@@ -1,6 +1,57 @@
 # FaciliGator
 
-A UF Canvas extension that helps students manage their learning by collecting assignment information and providing access to Zoom recordings.
+A Chrome extension for UF Canvas that helps students manage assignments and recordings.
+
+## Features
+
+- Scrape and organize Canvas assignments
+- Scrape and organize Zoom recordings from Canvas inbox
+- User authentication with email confirmation
+- Secure API backend
+
+## Deployment
+
+### Deploying to Render.com
+
+This project includes a `render.yaml` file for easy deployment to Render.com.
+
+1. Fork or clone this repository to your GitHub account
+2. Create a Render.com account and connect it to your GitHub account
+3. Create a new "Blueprint" on Render and select your repository
+4. Configure the required environment variables:
+   - `SUPABASE_URL`: Your Supabase project URL
+   - `SUPABASE_KEY`: Your Supabase service role key
+   - `JWT_SECRET`: Will be auto-generated
+   - `SITE_URL`: Will be auto-configured to your Render service URL
+
+### Local Development
+
+1. Clone the repository
+2. Set up the backend:
+   ```bash
+   cd backend
+   cp .env.example .env  # Update with your Supabase credentials
+   pip install -r requirements.txt
+   uvicorn main:app --reload
+   ```
+3. Load the extension in Chrome:
+   - Go to `chrome://extensions/`
+   - Enable "Developer mode"
+   - Click "Load unpacked" and select the `extension` folder
+
+## Authentication Flow
+
+1. Users sign up with email and password
+2. Email confirmation is required before login
+3. After confirming email, users are redirected back to the extension
+4. JWT tokens are used for API authentication
+
+## Security Notes
+
+- Each email can only be registered once
+- Email confirmation is required for all accounts
+- User passwords are securely handled by Supabase
+- JWT tokens are used for API authentication
 
 ## Project Structure
 

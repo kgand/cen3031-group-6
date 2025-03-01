@@ -162,6 +162,23 @@ async def signup(user: UserCreate):
         # Log the signup attempt for debugging
         logger.info(f"Signup attempt for email: {user.email}")
         
+        # Check if user already exists before attempting to create
+        try:
+            # Try to get user by email
+            user_response = supabase.auth.admin.list_users()
+            existing_users = [u for u in user_response.users if u.email == user.email]
+            
+            if existing_users:
+                logger.warning(f"Signup attempt with existing email: {user.email}")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="A user with this email already exists. Please use a different email or try logging in."
+                )
+        except Exception as check_error:
+            # If we can't check (e.g., admin API not available), continue with signup
+            # Supabase will still return an error if the user exists
+            logger.warning(f"Could not pre-check user existence: {str(check_error)}")
+        
         # Create user in Supabase
         response = supabase.auth.sign_up({
             "email": user.email,
