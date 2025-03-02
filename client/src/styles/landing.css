@@ -1,14 +1,12 @@
 
-
-.bs {
-  box-shadow: 0 0 0px #2992ff;
-  transition: all 200ms;
+.cta {
+  transition: box-shadow 225ms ease;
 }
 
-.bs:hover {
-  /* Intensify box-shadow on hover */
-  box-shadow: 0 0 20px #2992ff;
+.cta:hover {
+  box-shadow: 0 0px 14px #f1f1f1aa;
 }
+
 
 .fade {
   background: linear-gradient(180deg, #aaaaaa 0%, #aaaaaa00 70.86%);
