@@ -3,6 +3,7 @@ import Home from "./pages/home";
 import Login from "./pages/login";
 import './styles/app.css'
 import './styles/fonts.css'
+import './styles/landing.css'
 import Nav from "./components/nav";
 
 const App: React.FC = () => {
