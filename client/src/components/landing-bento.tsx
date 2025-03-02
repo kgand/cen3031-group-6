@@ -10,7 +10,7 @@ export default function LandingBento() {
           <br />
           and course content to prepare personalized learning materials.{" "}
         </p>
-        <div className="grid grid-cols-12 gap-4 pt-20">
+        <div className="grid grid-cols-12 gap-4 pt-28">
           <TimeCard />
           <CoursesCard />
           <PerformanceCard />

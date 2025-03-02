@@ -1,4 +1,4 @@
-import { FaVideo } from "react-icons/fa";
+import { FaPlay } from "react-icons/fa";
 import { MacbookScroll } from "../components/ui/macbook-scroll";
 import LandingBento from "../components/landing-bento";
 import LandingMac from "../components/landing-mac";
@@ -36,8 +36,8 @@ export default function home() {
 
           <a className="hover:bg-primary-700 hover-bg-opacity-50 flex cursor-pointer items-center gap-4 rounded-md px-10 py-2 transition-all">
             Learn More{" "}
-            <span className="text-xl">
-              <FaVideo />
+            <span className="text-sm">
+              <FaPlay />
             </span>
           </a>
         </div>

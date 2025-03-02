@@ -1,28 +1,53 @@
-h {
-    filter: blur(40px);
-  }
-  
-  .bs {
-    box-shadow: 0 0 0px #2992ff;
-    transition: all 200ms;
-  }
-  
-  .bs:hover {
-    /* Intensify box-shadow on hover */
-    box-shadow: 0 0 20px #2992ff;
-  }
-  
-  .fade {
-      background: linear-gradient(180deg, #aaaaaa 0%, #aaaaaa00 70.86%);
-  }
-  
-  .cover {
-    position: absolute;
-    inset: 0;
-    z-index: 10;
-    background: linear-gradient(180deg, rgba(36, 36, 36, 0.00) 0%, #242424 82.58%);
-  }
-  
-  .faded-card {
-    background: linear-gradient(180deg, #4A4A4A 0%, #4A4A4A00 82.58%);
-  }
+
+
+.bs {
+  box-shadow: 0 0 0px #2992ff;
+  transition: all 200ms;
+}
+
+.bs:hover {
+  /* Intensify box-shadow on hover */
+  box-shadow: 0 0 20px #2992ff;
+}
+
+.fade {
+  background: linear-gradient(180deg, #aaaaaa 0%, #aaaaaa00 70.86%);
+}
+
+.cover {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: linear-gradient(180deg, rgba(36, 36, 36, 0) 0%, #242424 82.58%);
+}
+
+.faded-card {
+  background: linear-gradient(180deg, #4a4a4a 0%, #4a4a4a00 82.58%);
+}
+
+.pc-stand {
+  background: linear-gradient(
+    180deg,
+    rgba(64, 64, 64, 0.2) 0%,
+    rgba(64, 64, 64, 0.3) 13.27%,
+    rgba(64, 64, 64, 0.38) 27.21%,
+    rgba(64, 64, 64, 0.48) 60.58%,
+    rgba(64, 64, 64, 0.56) 76.36%,
+    rgba(64, 64, 64, 0.45) 92.14%
+  );
+}
+
+.pc-base {
+  background: linear-gradient(
+    90deg,
+    rgba(64, 64, 64, 0.6) 0%,
+    rgba(64, 64, 64, 0.3) 6.5%,
+    rgba(64, 64, 64, 0.6) 19.18%,
+    rgba(64, 64, 64, 0.3) 32.93%,
+    rgba(64, 64, 64, 0.3) 66.46%,
+    rgba(64, 64, 64, 0.6) 81%,
+    rgba(64, 64, 64, 0.3) 94%,
+    rgba(64, 64, 64, 0.6) 100%
+  );
+  box-shadow: 0px -7px 2px 0px rgba(0, 0, 0, 0.18);
+}
