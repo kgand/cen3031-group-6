@@ -1,12 +1,12 @@
-
 .cta {
   transition: box-shadow 225ms ease;
 }
 
 .cta:hover {
-  box-shadow: 0 0px 14px #f1f1f1aa;
+  box-shadow: 0 0px 16px #f1f1f1aa;
 }
 
+/* Bento box styles */
 
 .fade {
   background: linear-gradient(180deg, #aaaaaa 0%, #aaaaaa00 70.86%);
@@ -23,14 +23,16 @@
   background: linear-gradient(180deg, #4a4a4a 0%, #4a4a4a00 82.58%);
 }
 
+/* Mac monitor */
+
 .pc-stand {
   background: linear-gradient(
     180deg,
-    rgba(64, 64, 64, 0.2) 0%,
-    rgba(64, 64, 64, 0.3) 13.27%,
-    rgba(64, 64, 64, 0.38) 27.21%,
+    rgba(64, 64, 64, 0.1) 0%,
+    rgba(64, 64, 64, 0.2) 13.27%,
+    rgba(64, 64, 64, 0.25) 27.21%,
     rgba(64, 64, 64, 0.48) 60.58%,
-    rgba(64, 64, 64, 0.56) 76.36%,
+    rgba(64, 64, 64, 0.54) 76.36%,
     rgba(64, 64, 64, 0.45) 92.14%
   );
 }
@@ -48,4 +50,22 @@
     rgba(64, 64, 64, 0.6) 100%
   );
   box-shadow: 0px -7px 2px 0px rgba(0, 0, 0, 0.18);
+}
+
+/* Security Widgets */
+
+.pulsing-box {
+  animation: pulse 2.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 8px 0 rgba(41,146,255, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 8px 20px rgba(52, 152, 219, 0);
+  }
+  100% {
+    box-shadow: 0 0 8px 0 rgba(52, 152, 219, 0);
+  }
 }

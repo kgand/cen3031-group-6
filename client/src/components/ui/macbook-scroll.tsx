@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { MotionValue, motion, useScroll, useTransform } from "framer-motion";
 import { cn } from "../../lib/utils";
 import {
@@ -26,7 +26,6 @@ import { IconCaretDownFilled } from "@tabler/icons-react";
 
 export const MacbookScroll = ({
   src,
-  showGradient = true,
   badge,
 }: {
   src?: string;
@@ -51,12 +50,12 @@ export const MacbookScroll = ({
   const scaleX = useTransform(
     scrollYProgress,
     [0, 0.3],
-    [1.2, isMobile ? 1 : 1.5],
+    [1.2, isMobile ? 1.2 : 1.5],
   );
   const scaleY = useTransform(
     scrollYProgress,
     [0, 0.3],
-    [0.6, isMobile ? 1 : 1.5],
+    [0.6, isMobile ? 1.2 : 1.5],
   );
   const translate = useTransform(scrollYProgress, [0, 0.5], [0, 800]);
   const rotate = useTransform(scrollYProgress, [0.1, 0.08, 0.3], [-28, -28, 0]);
@@ -64,7 +63,7 @@ export const MacbookScroll = ({
   return (
     <div
       ref={ref}
-      className="py-36 flex min-h-[1600px] flex-shrink-0 scale-[0.35] transform flex-col items-center justify-start [perspective:800px] sm:scale-50 md:scale-100"
+      className="-mt-36 sm:mt-0 pb-58 sm:pb-36 sm:py-36 flex sm:min-h-[1575px] flex-shrink-0 scale-[0.39] transform flex-col items-center justify-start [perspective:800px] sm:scale-50 md:scale-100"
     >
       <Lid
         src={src}
