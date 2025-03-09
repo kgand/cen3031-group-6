@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirm Email Change - FaciliGator</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .logo {
+            max-width: 150px;
+            margin-bottom: 10px;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .button {
+            display: inline-block;
+            background-color: #FA4616;
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .button:hover {
+            background-color: #E03E14;
+        }
+        .footer {
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            font-size: 12px;
+            color: #777;
+        }
+        .link {
+            word-break: break-all;
+            color: #0021A5;
+        }
+        .security-tip {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            border-left: 4px solid #0021A5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>FaciliGator</h1>
+            <h2>Email Change Confirmation</h2>
+            <p>Your Canvas Learning Assistant</p>
+        </div>
+        
+        <div class="content">
+            <p>Hello,</p>
+            
+            <p>We received a request to change the email address associated with your FaciliGator account. To confirm this change, please click the button below:</p>
+            
+            <div style="text-align: center;">
+                <a href="{{ .ConfirmationURL }}" class="button">Confirm Email Change</a>
+            </div>
+            
+            <p>If you're having trouble with the button above, copy and paste the following link into your browser:</p>
+            
+            <p class="link">{{ .ConfirmationURL }}</p>
+            
+            <div class="security-tip">
+                <p>Security Note: This link will expire in 24 hours for security reasons. If you did not request this email change, please contact us immediately at <a href="mailto:kovidhgandreti@gmail.com">kovidhgandreti@gmail.com</a>.</p>
+            </div>
+            
+            <p>Thank you for using FaciliGator!</p>
+            
+            <p>Best regards,<br>The FaciliGator Team</p>
+        </div>
+        
+        <div class="footer">
+            <p>FaciliGator - University of Florida</p>
+            <p>This is an automated message from FaciliGator.</p>
+            <p>If you need assistance, contact <a href="mailto:kovidhgandreti@gmail.com">kovidhgandreti@gmail.com</a></p>
+        </div>
+    </div>
+</body>
+</html> 

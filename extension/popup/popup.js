@@ -1,8 +1,16 @@
+// Import the authentication utilities
+import { redirectIfNotAuthenticated } from '../scripts/auth-check.js';
+import { ApiUtils } from '../scripts/config.js';
+
 document.addEventListener('DOMContentLoaded', function() {
+    // Check if user is authenticated
+    checkAuth();
+    
     // Initialize UI elements
     const assignmentsButton = document.getElementById('assignmentsButton');
     const inboxButton = document.getElementById('inboxButton');
     const stopButton = document.getElementById('stopButton');
+    const logoutButton = document.getElementById('logoutButton');
     const resultsContainer = document.getElementById('results-container');
     const loadingSpinner = document.getElementById('loading-spinner');
     const assignmentsList = document.getElementById('assignments-list');
@@ -24,52 +32,96 @@ document.addEventListener('DOMContentLoaded', function() {
     let isScrapingActive = false;
     let currentScrapingType = null; // 'assignments' or 'recordings'
 
-    // Reset scraping state on popup open
-    chrome.storage.local.get(['scrapingState'], function(result) {
-        // Check if there's an active scraping state
-        if (result.scrapingState && result.scrapingState.isActive) {
-            // Verify scraping is actually ongoing by checking with content script
-            chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-                if (tabs[0]) {
-                    chrome.tabs.sendMessage(tabs[0].id, { action: 'checkScrapingStatus' }, response => {
-                        if (response && response.isActive) {
-                            // Scraping is actually ongoing, restore state
-                            isScrapingActive = true;
-                            currentScrapingType = result.scrapingState.type;
-                            updateButtonStates(true);
-                            setLoading(true, result.scrapingState.type);
-                            if (result.scrapingState.current !== undefined && result.scrapingState.total !== undefined) {
-                                updateProgressUI(
-                                    result.scrapingState.current,
-                                    result.scrapingState.total,
-                                    result.scrapingState.currentTitle
-                                );
-                            }
-                            // Ensure stop button is visible and enabled
-                            if (stopButton) {
-                                stopButton.style.display = 'block';
-                                stopButton.disabled = false;
-                            }
-                            // Disable action buttons
-                            if (assignmentsButton) assignmentsButton.disabled = true;
-                            if (inboxButton) inboxButton.disabled = true;
-                            if (goToAssignmentsBtn) goToAssignmentsBtn.disabled = true;
-                            if (goToInboxBtn) goToInboxBtn.disabled = true;
-                        } else {
-                            // Scraping is not actually active, reset state
-                            resetScrapingState();
-                        }
-                    });
-                } else {
-                    // No active tab, reset state
-                    resetScrapingState();
-                }
-            });
-        } else {
-            // No scraping state, ensure UI is reset
-            resetScrapingState();
+    // Function to check authentication
+    async function checkAuth() {
+        try {
+            const isAuthenticated = await redirectIfNotAuthenticated();
+            if (isAuthenticated) {
+                // User is authenticated, initialize the app
+                initializeApp();
+            }
+        } catch (error) {
+            console.error('Authentication check error:', error);
         }
-    });
+    }
+    
+    // Function to initialize the app after authentication check
+    function initializeApp() {
+        // Get user info and update UI
+        updateUserInfo();
+        
+        // Reset scraping state on popup open
+        chrome.storage.local.get(['scrapingState'], function(result) {
+            // Check if there's an active scraping state
+            if (result.scrapingState && result.scrapingState.isActive) {
+                // Verify scraping is actually ongoing by checking with content script
+                chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+                    if (tabs[0]) {
+                        chrome.tabs.sendMessage(tabs[0].id, { action: 'checkScrapingStatus' }, response => {
+                            if (response && response.isActive) {
+                                // Scraping is actually ongoing, restore state
+                                isScrapingActive = true;
+                                currentScrapingType = result.scrapingState.type;
+                                updateButtonStates(true);
+                                setLoading(true, result.scrapingState.type);
+                                if (result.scrapingState.current !== undefined && result.scrapingState.total !== undefined) {
+                                    updateProgressUI(
+                                        result.scrapingState.current,
+                                        result.scrapingState.total,
+                                        result.scrapingState.currentTitle
+                                    );
+                                }
+                                // Ensure stop button is visible and enabled
+                                if (stopButton) {
+                                    stopButton.style.display = 'block';
+                                    stopButton.disabled = false;
+                                }
+                                // Disable action buttons
+                                if (assignmentsButton) assignmentsButton.disabled = true;
+                                if (inboxButton) inboxButton.disabled = true;
+                                if (goToAssignmentsBtn) goToAssignmentsBtn.disabled = true;
+                                if (goToInboxBtn) goToInboxBtn.disabled = true;
+                            } else {
+                                // Scraping is not actually active, reset state
+                                resetScrapingState();
+                            }
+                        });
+                    } else {
+                        // No active tab, reset state
+                        resetScrapingState();
+                    }
+                });
+            } else {
+                // No scraping state, ensure UI is reset
+                resetScrapingState();
+            }
+        });
+
+        // Check current page to enable/disable appropriate buttons
+        checkCurrentPage();
+
+        // Add event listeners
+        if (assignmentsButton) {
+            assignmentsButton.addEventListener('click', handleAssignmentsClick);
+        }
+
+        if (inboxButton) {
+            inboxButton.addEventListener('click', handleInboxClick);
+        }
+
+        if (stopButton) {
+            stopButton.addEventListener('click', handleStopClick);
+        }
+        
+        // Add logout button event listener
+        if (logoutButton) {
+            console.log('Adding logout button event listener');
+            logoutButton.addEventListener('click', handleLogout);
+        }
+
+        // Add URL hash change listener to detect course selection in inbox
+        window.addEventListener('hashchange', checkCurrentPage);
+    }
 
     // Function to reset all scraping state and UI
     function resetScrapingState() {
@@ -848,4 +900,68 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Add URL hash change listener to detect course selection in inbox
     window.addEventListener('hashchange', checkCurrentPage);
+
+    // Function to handle logout
+    async function handleLogout() {
+        const logoutButton = document.getElementById('logoutButton');
+        
+        try {
+            // Show loading state
+            logoutButton.disabled = true;
+            logoutButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging out...';
+            
+            console.log('Logging out...');
+            
+            // Call the logout API
+            const result = await ApiUtils.logout();
+            console.log('Logout result:', result);
+            
+            // Redirect to auth page
+            window.location.href = 'auth.html';
+        } catch (error) {
+            console.error('Logout error:', error);
+            
+            // Show error message if available
+            if (document.getElementById('error-text')) {
+                document.getElementById('error-container').style.display = 'block';
+                document.getElementById('error-text').textContent = 'Failed to logout. Please try again.';
+            } else {
+                alert('Failed to logout. Please try again.');
+            }
+            
+            // Reset button state
+            logoutButton.disabled = false;
+            logoutButton.innerHTML = '<i class="fas fa-sign-out-alt"></i> Logout';
+        }
+    }
+
+    // Add a new function to update user info in the UI
+    async function updateUserInfo() {
+        try {
+            // Get user info from storage
+            const userInfo = await ApiUtils.getUserInfo();
+            
+            // Update logout button with user name if available
+            const logoutButton = document.getElementById('logoutButton');
+            if (logoutButton && userInfo && userInfo.email) {
+                // Get the first part of the email (before @) as fallback
+                let displayName = userInfo.email.split('@')[0];
+                
+                // If we have a full name, format it properly
+                if (userInfo.fullName) {
+                    // Format name as "First Last" with proper capitalization
+                    displayName = userInfo.fullName.split(' ')
+                        .map(name => name.charAt(0).toUpperCase() + name.slice(1).toLowerCase())
+                        .join(' ');
+                }
+                
+                logoutButton.innerHTML = `
+                    <span class="user-name">${displayName}</span>
+                    <i class="fas fa-sign-out-alt"></i>
+                `;
+            }
+        } catch (error) {
+            console.error('Error updating user info:', error);
+        }
+    }
 }); 
