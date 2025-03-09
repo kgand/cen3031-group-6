@@ -1,0 +1,36 @@
+services:
+  # Backend API service
+  - type: web
+    name: facilitator-api
+    env: python
+    plan: free
+    autoDeploy: false
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SITE_URL
+        fromService:
+          name: facilitator-api
+          type: web
+          property: url
+    healthCheckPath: /
+    autoDeploy: true
+
+  # Frontend static site (if needed in the future)
+  # - type: web
+  #   name: facilitator-frontend
+  #   env: static
+  #   buildCommand: cd client && npm install && npm run build
+  #   staticPublishPath: ./client/build
+  #   envVars:
+  #     - key: REACT_APP_API_URL
+  #       fromService:
+  #         name: facilitator-api
+  #         type: web
+  #         property: url 

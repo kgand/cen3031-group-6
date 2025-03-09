@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logout Test</title>
+</head>
+<body>
+    <h1>Logout Test</h1>
+    <button id="logoutButton">Logout</button>
+    
+    <script type="module">
+        import { ApiUtils } from '../scripts/config.js';
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const logoutButton = document.getElementById('logoutButton');
+            
+            logoutButton.addEventListener('click', async function() {
+                console.log('Logout button clicked');
+                try {
+                    console.log('Calling ApiUtils.logout()');
+                    const result = await ApiUtils.logout();
+                    console.log('Logout result:', result);
+                    alert('Logout successful! Redirecting to auth page...');
+                    window.location.href = 'auth.html';
+                } catch (error) {
+                    console.error('Logout error:', error);
+                    alert('Logout failed: ' + error.message);
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

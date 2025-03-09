@@ -9,6 +9,18 @@ let ongoing = {};
 // At the top of the file, add a global cancellation flag
 let scrapingCancelled = false;
 
+// At the top of the file, add authentication check
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'checkAuth') {
+        chrome.storage.local.get(['facilitator_auth_token'], function(result) {
+            sendResponse({ isAuthenticated: !!result.facilitator_auth_token });
+        });
+        return true; // Required for async response
+    }
+    
+    // ... existing message handlers ...
+});
+
 // Helper function to inject content script
 async function injectContentScript(tabId) {
     try {
