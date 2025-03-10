@@ -3,7 +3,7 @@ import { MacbookScroll } from "./ui/macbook-scroll";
 import FadeUp from "./motion/FadeUp";
 import { Link } from "react-router-dom";
 
-export default function Hero() {
+export default function LandingHero() {
   return (
     <FadeUp>
       <div className="relative z-10 mx-auto mt-36 md:mt-44 max-w-6xl flex-col items-center justify-center px-6 sm:px-8 sm:text-center">
@@ -20,13 +20,13 @@ export default function Hero() {
           and course content to prepare personalized learning materials.{" "}
         </h2>
         <div className="flex flex-wrap justify-center gap-4 pt-8">
-          <Link to={"/login"} className="bg-primary-100 text-primary-900 cursor-pointer rounded-md w-full text-center sm:w-auto px-10 py-2 cta">
+          <Link to={"/login"} className="bg-primary-100 text-primary-900 cursor-pointer rounded-md w-full text-center sm:w-auto px-10 pt-[11px] pb-2 cta">
             Get Started
           </Link>
 
-          <a className="hover:bg-primary-700 hover-bg-opacity-50 flex cursor-pointer items-center gap-4 rounded-md px-10 py-2 transition-all">
+          <a className="hover:bg-primary-700 hover-bg-opacity-50 flex cursor-pointer items-center gap-3 rounded-md px-10 pt-[11px] pb-2 transition-all">
             Learn More{" "}
-            <span className="text-sm">
+            <span className="text-sm pb-px">
               <FaPlay />
             </span>
           </a>
