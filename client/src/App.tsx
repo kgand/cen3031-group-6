@@ -10,8 +10,8 @@ import './styles/app.css'
 import './styles/fonts.css'
 import './styles/landing.css'
 import Nav from "./components/nav";
-import Login from "./pages/login";
-import SignUp from "./pages/signup";
+import Login from "./pages/Login";
+import SignUp from "./pages/SignUp";
 import Dashboard from "./pages/Dashboard";
 import React from "react";
 

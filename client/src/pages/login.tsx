@@ -73,7 +73,7 @@ const Form: React.FC = () => {
 
 const LoginMenu: React.FC = () => {
   return (
-    <div className="border-primary-600 flex flex-col items-center rounded-md border p-8">
+    <div className="border-primary-600 flex flex-col items-center rounded-sm border p-6">
       <figure>
         <img src="/images/nav-logo.png" alt="" className="max-w-40" />
       </figure>
