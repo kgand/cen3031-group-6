@@ -1,10 +1,10 @@
-import LandingBento from "../components/landing-bento";
-import LandingMac from "../components/landing-mac";
-import Footer from "../components/footer";
-import LandingSecurity from "../components/landing-security";
+import LandingBento from "../components/LandingBento";
+import LandingMac from "../components/LandingMac";
+import LandingSecurity from "../components/LandingSecurity";
 import LandingHero from "../components/LandingHero";
+import Footer from "../components/footer";
 
-export default function home() {
+export default function Home() {
   return (
     <>
       <div className="bg-primary-700 absolute top-24 hidden h-px w-full md:block" />

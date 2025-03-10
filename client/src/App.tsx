@@ -5,15 +5,18 @@ import {
   redirect,
   LoaderFunction,
 } from "react-router-dom";
-import Home from "./pages/home";
 import './styles/app.css'
 import './styles/fonts.css'
 import './styles/landing.css'
-import Nav from "./components/nav";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
 import Dashboard from "./pages/Dashboard";
 import React from "react";
+import Home from "./pages/home";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import Nav from "./components/nav";
+import ConfirmEmail from "./pages/ConfirmEmail";
 
 
 const requireAuth: LoaderFunction = () => {
@@ -34,6 +37,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <>
       <Nav />
+      <ToastContainer theme="dark"/>
       {children}
     </>
   );
@@ -51,6 +55,10 @@ const router = createBrowserRouter([
   {
     path: "/signup",
     element: <Layout><SignUp /></Layout>
+  },
+  {
+    path: "/confirm-email",
+    element: <Layout><ConfirmEmail /></Layout>
   },
   {
     path: "/dashboard",

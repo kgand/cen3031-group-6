@@ -37,7 +37,7 @@ export default function Nav() {
         </div>
         <div className="flex justify-end gap-4 items-center">
           <Link
-            to={"/login"}
+            to={"/signup"}
             className="bg-primary-100 text-primary-900 cta flex pt-[11px] pb-[9px] md:h-full items-center rounded-md px-6 sm:px-8 text-sm sm:text-[15px]"
           >
             <span className="">Get Started</span>

@@ -1,5 +1,5 @@
 import { FaPlay } from "react-icons/fa";
-import { MacbookScroll } from "./ui/macbook-scroll";
+import { MacbookScroll } from "./ui/MacbookScroll";
 import FadeUp from "./motion/FadeUp";
 import { Link } from "react-router-dom";
 
