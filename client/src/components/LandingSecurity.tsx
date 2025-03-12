@@ -1,8 +1,8 @@
-import { PrivacyWidget1, PrivacyWidget2 } from "./ui/privacy-widgets";
+import { PrivacyWidget1, PrivacyWidget2 } from "./ui/PrivacyWidgets";
 
 export default function LandingSecurity() {
   return (
-    <div className="border-primary-700 border-b py-28">
+    <div className="py-28">
       <div className="mx-auto max-w-6xl p-6 sm:px-8">
         <h3 className="text-center text-3xl sm:text-4xl text-balance font-medium tracking-tight">
           No need to worry about privacy
@@ -13,7 +13,7 @@ export default function LandingSecurity() {
           and course content to prepare personalized learning materials.{" "}
         </p>
         <div className="pt-20 sm:pt-28">
-          <div className="grid md:grid-cols-2 gap-12 md:gap-20">
+          <div className="grid md:grid-cols-2 gap-12 md:gap-24">
             <div>
               <p className="text-2xl">
                 We never give user data to third parties.
@@ -30,7 +30,7 @@ export default function LandingSecurity() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-12 md:gap-20 pt-20 md:pt-28 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-12 md:gap-24 pt-20 md:pt-28 md:grid-cols-2">
             {/* Text div is ordered first on mobile */}
             <div className="bg-primary-800 order-2 h-80 w-full rounded-md md:order-none">
               <PrivacyWidget2 />

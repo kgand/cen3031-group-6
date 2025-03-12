@@ -69,3 +69,8 @@
     box-shadow: 0 0 8px 0 rgba(52, 152, 219, 0);
   }
 }
+
+/* Tailwind blur is broken, must be done manually  */
+.bd-blur {
+  backdrop-filter: blur(2px);
+}
