@@ -7,10 +7,10 @@ export default function LandingHero() {
   return (
     <FadeUp>
       <div className="relative z-10 mx-auto mt-36 md:mt-44 max-w-6xl flex-col items-center justify-center px-6 sm:px-8 sm:text-center">
-        <p className="text-primary-200 text-balance">
+        <p className="text-primary-200 text-balance text-sm sm:text-base">
           Study smarter, not harder with FaciliGator
         </p>
-        <h1 className="pt-4 text-4xl sm:text-5xl leading-[1.08] font-bold tracking-tight text-balance">
+        <h1 className="pt-4 text-[40px] sm:text-5xl leading-[1.08] font-bold tracking-tight text-balance">
           Your <span className="text-blue-500">AI companion </span>that <br className="hidden md:inline"/>
           goes to class for you.
         </h1>

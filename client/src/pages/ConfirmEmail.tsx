@@ -1,48 +1,19 @@
-import { useState, useEffect } from "react";
+import { useAtom } from "jotai";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import Footer from "../components/Footer";
+import { userAtom } from "../store";
 
-const API_URL = import.meta.env.VITE_API_URL;
-
-const checkEmailConfirmed = async (): Promise<boolean> => {
-  const token = localStorage.getItem("token");
-  if (!token) return false;
-
-  const response = await fetch(`${API_URL}/auth/me`, {
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    return false;
-  }
-
-  const user = await response.json();
-  console.log(user);
-
-  return Boolean(user.email_confirmed_at);
-};
 
 const ConfirmEmail: React.FC = () => {
-  const [confirmed, setConfirmed] = useState<boolean>(false);
   const navigate = useNavigate();
 
+  const [user] = useAtom(userAtom)
+
   useEffect(() => {
-    const intervalId = setInterval(async () => {
-      const isConfirmed = await checkEmailConfirmed();
-      console.log(isConfirmed);
-      if (isConfirmed) {
-        setConfirmed(true);
-        clearInterval(intervalId);
-
-        navigate("/login");
-      }
-    }, 5000);
-
-    return () => clearInterval(intervalId);
-  }, [navigate]);
+    if(user) {
+      navigate("/dashboard")
+    }
+  },[user])
 
   return (
     <>

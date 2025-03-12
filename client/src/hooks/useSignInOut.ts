@@ -24,14 +24,29 @@ const useSignInOut = () => {
       });
       navigate('/dashboard', { replace: true });
     } catch (error: any) {
-      // If an error occurs, update the toast accordingly
       const errorMessage = error.message || 'Login failed';
-      toast.update(toastId, {
-        render: errorMessage,
-        type: "error",
-        isLoading: false,
-        autoClose: 3000,
-      });
+      
+      if (
+        errorMessage ===
+        "Email not confirmed. Please check your inbox and confirm your email before logging in."
+      ) {
+        // Update toast and redirect to /confirm-email for this specific error
+        toast.update(toastId, {
+          render: errorMessage,
+          type: "info",
+          isLoading: false,
+          autoClose: 3000,
+        });
+        navigate('/confirm-email', { replace: true });
+      } else {
+        // Handle other errors normally
+        toast.update(toastId, {
+          render: errorMessage,
+          type: "error",
+          isLoading: false,
+          autoClose: 3000,
+        });
+      }
     }
   };
 

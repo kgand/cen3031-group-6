@@ -31,7 +31,7 @@ export const tokenAtom = atom<string | null>(
 // Write-only atom for the login action
 export const loginAtom = atom(
   null,
-  async (get, set, credentials: { email: string; password: string }) => {
+  async (_, set, credentials: { email: string; password: string }) => {
     try {
       set(isLoadingUserAtom, true);
       set(authErrorAtom, null);
@@ -72,14 +72,14 @@ export const loginAtom = atom(
 // Write-only atom for logout action
 export const logoutAtom = atom(
   null,
-  (get, set) => {
+  (_, set) => {
     localStorage.removeItem('token');
     set(tokenAtom, null);
     set(userAtom, null);
   }
 );
 
-// Write-only atom for refreshing user data
+
 // Write-only atom for refreshing user data
 export const refreshUserAtom = atom(
   null,
