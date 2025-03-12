@@ -1,6 +1,6 @@
 // Import the authentication utilities
 import { redirectIfNotAuthenticated } from '../scripts/auth-check.js';
-import { ApiUtils } from '../scripts/config.js';
+import { ApiUtils, AuthUtils, CONFIG } from '../scripts/config.js';
 
 document.addEventListener('DOMContentLoaded', function() {
     // Check if user is authenticated
@@ -164,8 +164,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to extract course ID from URL
     function getCourseId(url) {
-        const match = url.match(/\/courses\/(\d+)/);
-        return match ? match[1] : null;
+        console.log('Extracting course ID from URL:', url);
+        
+        // More specific regex to extract course ID from Canvas URLs
+        // This handles URLs like:
+        // - https://ufl.instructure.com/courses/12345
+        // - https://ufl.instructure.com/courses/12345/assignments
+        // - https://ufl.instructure.com/courses/12345/modules
+        // - https://ufl.instructure.com/courses/12345/assignments/67890
+        const match = url.match(/\/courses\/(\d+)(?:\/|$)/);
+        
+        if (match && match[1]) {
+            console.log('Found course ID:', match[1]);
+            return match[1];
+        }
+        
+        console.log('No course ID found in URL');
+        return null;
     }
 
     // Function to get assignments URL for a course
@@ -471,17 +486,37 @@ document.addEventListener('DOMContentLoaded', function() {
         if (isScrapingActive) return;
         
         try {
-            isScrapingActive = true;
-            updateScrapingUI('assignments', true);
-            showProgress('Scraping assignments...', 'Initializing...');
-
             // Get current tab
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             if (!tab) throw new Error('No active tab found');
 
+            // Check if we're on Canvas
+            if (!tab.url.includes('ufl.instructure.com')) {
+                throw new Error('Please navigate to Canvas first');
+            }
+
             // Extract course ID from URL
-            const courseId = extractCourseId(tab.url);
-            if (!courseId) throw new Error('Please navigate to a Canvas course first');
+            const courseId = getCourseId(tab.url);
+            if (!courseId) {
+                console.error('Failed to extract course ID from URL:', tab.url);
+                throw new Error('Please navigate to a Canvas course page');
+            }
+
+            // Now we can proceed with scraping
+            isScrapingActive = true;
+            currentScrapingType = 'assignments';
+            updateButtonStates(true);
+            setLoading(true, 'assignments');
+            showProgress('Scraping assignments...', 'Initializing...');
+
+            // Save scraping state
+            chrome.storage.local.set({
+                scrapingState: {
+                    isActive: true,
+                    type: 'assignments',
+                    courseId: courseId
+                }
+            });
 
             // Inject content script
             await chrome.scripting.executeScript({
@@ -490,22 +525,23 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             // Send message to start scraping
-            const response = await chrome.tabs.sendMessage(tab.id, { 
-                action: 'scrapeAssignments',
-                courseId: courseId
-            });
+            chrome.tabs.sendMessage(tab.id, { 
+                action: 'scrape',
+                data: { type: 'assignments', courseId: courseId }
+            }, response => {
+                if (chrome.runtime.lastError) {
+                    console.error('Error:', chrome.runtime.lastError);
+                    resetScrapingState();
+                    showError('Error communicating with the page. Please refresh and try again.');
+                    return;
+                }
 
-            if (response.success) {
-                showProgress('Scraping complete!', `Found ${response.assignments.length} assignments`, response.assignments.length, response.assignments.length);
-                displayResults(response.assignments, 'assignments');
-            } else {
-                throw new Error(response.error || 'Failed to scrape assignments');
-            }
+                // Process will continue via content script messages
+            });
         } catch (error) {
-            showError(error.message);
-        } finally {
-            isScrapingActive = false;
-            updateScrapingUI('assignments', false);
+            console.error('Scraping error:', error);
+            resetScrapingState();
+            showError(error.message || 'An unknown error occurred');
         }
     }
 
@@ -552,125 +588,425 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function displayResults(items, type, stats, wasCancelled = false) {
+        // Check if the results container exists
         if (!resultsContainer) return;
 
-        // Hide stop button and loading spinner since scraping is complete
-        if (stopButton) {
-            stopButton.style.display = 'none';
-            stopButton.disabled = true;
-        }
-        if (loadingSpinner) {
-            loadingSpinner.style.display = 'none';
-        }
-
+        // Clear results container
         resultsContainer.innerHTML = '';
         
-        // Only show completion status if scraping wasn't cancelled
-        if (!wasCancelled) {
-            const statusDiv = document.createElement('div');
-            statusDiv.className = 'completion-status';
-            statusDiv.innerHTML = `
-                <div class="status-header">
-                    <i class="fas fa-check-circle"></i> Scraping Complete
-                </div>
-                <div class="status-details">
-                    <p>Successfully extracted ${stats ? stats.successful : items.length} ${type}</p>
-                </div>
-            `;
-            resultsContainer.appendChild(statusDiv);
+        // Ensure stats is always defined with default values
+        stats = stats || { totalCount: 0, courseCount: 0 };
+        if (typeof stats.totalCount === 'undefined') stats.totalCount = items.length;
+        if (typeof stats.courseCount === 'undefined') stats.courseCount = 0;
+        
+        // Create summary bar
+        const summaryBar = document.createElement('div');
+        summaryBar.className = 'summary-bar';
+        
+        // Show appropriate icon and message based on type and cancellation status
+        let iconClass, message;
+        if (wasCancelled) {
+            iconClass = 'fa-exclamation-triangle';
+            message = 'Scraping was cancelled. Partial results shown below.';
+        } else if (type === 'assignments') {
+            iconClass = 'fa-tasks';
+            message = `Found ${items.length} assignments`;
+        } else if (type === 'recordings') {
+            iconClass = 'fa-video';
+            message = `Found ${items.length} Zoom recordings`;
         }
         
+        summaryBar.innerHTML = `
+            <div class="summary-icon"><i class="fas ${iconClass}"></i></div>
+            <div class="summary-text">${message}</div>
+        `;
+        resultsContainer.appendChild(summaryBar);
+        
+        // If no items found, show a message
         if (items.length === 0) {
-            resultsContainer.innerHTML += `<p class="no-results">No ${type} found</p>`;
+            const noResultsMessage = document.createElement('div');
+            noResultsMessage.className = 'no-results-message';
+            noResultsMessage.innerHTML = `<p>No ${type} found.</p>`;
+            resultsContainer.appendChild(noResultsMessage);
             return;
         }
 
-        items.forEach(item => {
-            const element = document.createElement('div');
-            element.className = type === 'assignments' ? 'assignment-item' : 'recording-item';
+        // Extract course name from the URL or use courseInfo if available
+        function getCourseName(item) {
+            if (item.course && item.course !== 'Unknown Course') {
+                return item.course;
+            }
             
-            if (type === 'assignments') {
-                // Create a truncated description that can be expanded
-                const truncatedDescription = item.description ? 
-                    item.description.substring(0, 150) + (item.description.length > 150 ? '...' : '') : 
-                    'No description available';
-
-                element.innerHTML = `
-                    <div class="item-title">${item.title}</div>
-                    <div class="item-details">
-                        <span>Due: ${item.dueDate || 'No due date'}</span>
+            // Try to extract course name from URL path parts
+            if (item.url) {
+                const urlObj = new URL(item.url);
+                const pathParts = urlObj.pathname.split('/');
+                const courseIdx = pathParts.indexOf('courses');
+                if (courseIdx !== -1 && courseIdx + 1 < pathParts.length) {
+                    return `Course ${pathParts[courseIdx + 1]}`;
+                }
+            }
+            
+            return 'Unknown Course';
+        }
+        
+        // Group items by course
+        const groupedItems = {};
+        items.forEach(item => {
+            // Ensure course name is always defined
+            const courseName = getCourseName(item);
+            
+            if (!groupedItems[courseName]) {
+                groupedItems[courseName] = [];
+            }
+            groupedItems[courseName].push({...item, course: courseName, selected: true});
+        });
+        
+        // Update course count
+        stats.courseCount = Object.keys(groupedItems).length;
+        
+        // Store all items for submission
+        const allItems = [];
+        
+        // Create select all checkbox
+        const selectAllContainer = document.createElement('div');
+        selectAllContainer.className = 'select-all-container';
+        selectAllContainer.innerHTML = `
+            <label class="select-all-label">
+                <input type="checkbox" id="selectAll" checked>
+                <span>Select All</span>
+            </label>
+        `;
+        resultsContainer.appendChild(selectAllContainer);
+        
+        // Add select all functionality
+        const selectAllCheckbox = selectAllContainer.querySelector('#selectAll');
+        selectAllCheckbox.addEventListener('change', function() {
+            const isChecked = this.checked;
+            const itemCheckboxes = document.querySelectorAll('.item-checkbox');
+            itemCheckboxes.forEach(checkbox => {
+                checkbox.checked = isChecked;
+                
+                // Update the item's selected property
+                const itemId = checkbox.getAttribute('data-item-id');
+                const courseId = checkbox.getAttribute('data-course-id');
+                
+                // Find the item and update it
+                const courseItems = groupedItems[courseId];
+                if (courseItems) {
+                    const item = courseItems.find(i => i.id === itemId);
+                    if (item) {
+                        item.selected = isChecked;
+                    }
+                }
+            });
+        });
+        
+        // Create and display each course section
+        let itemIndex = 0;
+        Object.keys(groupedItems).forEach(courseName => {
+            const courseItems = groupedItems[courseName];
+            const courseId = getCourseIdFromUrl(courseItems[0].url) || 'unknown';
+            
+            // Add course section
+            const courseSection = document.createElement('div');
+            courseSection.className = 'course-section';
+            
+            // Course header
+            const courseHeader = document.createElement('div');
+            courseHeader.className = 'course-header';
+            courseHeader.innerHTML = `
+                <h3>${courseName}</h3>
+                <span class="count-badge">${courseItems.length} ${courseItems.length === 1 ? type.slice(0, -1) : type}</span>
+            `;
+            courseSection.appendChild(courseHeader);
+            
+            // Course items
+            const itemsList = document.createElement('div');
+            itemsList.className = 'items-list';
+            
+            courseItems.forEach(item => {
+                // Generate unique ID for the item
+                item.id = `item-${itemIndex++}`;
+                allItems.push(item);
+                
+                const itemElement = document.createElement('div');
+                itemElement.className = `item-card ${type}-item`;
+                
+                // Content depends on item type
+                if (type === 'assignments') {
+                    itemElement.innerHTML = `
+                        <div class="item-checkbox-container">
+                            <input type="checkbox" class="item-checkbox" 
+                                   data-item-id="${item.id}"
+                                   data-course-id="${courseName}"
+                                   id="checkbox-${item.id}" checked>
+                            <label for="checkbox-${item.id}" class="checkbox-label"></label>
+                        </div>
+                        <div class="item-content">
+                            <div class="item-header">
+                                <h4 class="item-title">
+                                    <a href="${item.url}" target="_blank">${item.title}</a>
+                                </h4>
+                                <span class="due-date">${item.dueDate || 'No due date'}</span>
                     </div>
                     <div class="item-description">
-                        <p class="description-preview">${truncatedDescription}</p>
-                        ${item.description && item.description.length > 150 ? 
-                            `<button class="toggle-description">Show More</button>` : ''}
-                        <div class="full-description" style="display: none;">
-                            ${item.description || 'No description available'}
-                        </div>
+                                ${item.description ? `<p>${item.description.substring(0, 150)}${item.description.length > 150 ? '...' : ''}</p>` : ''}
                     </div>
                     ${item.rubric && item.rubric.length > 0 ? `
-                        <div class="rubric-section">
-                            <button class="toggle-rubric">Show Rubric</button>
-                            <div class="rubric-details" style="display: none;">
-                                ${item.rubric.map(criterion => `
-                                    <div class="rubric-criterion">
-                                        <h4>${criterion.title || 'Untitled Criterion'}</h4>
-                                        <p>${criterion.description || 'No description'}</p>
-                                        ${criterion.points ? `<p>Points: ${criterion.points}</p>` : ''}
-                                    </div>
-                                `).join('')}
+                                <div class="rubric-preview">
+                                    <div class="rubric-toggle">
+                                        <i class="fas fa-list"></i> Rubric (${item.rubric.length} criteria)
                             </div>
                         </div>
                     ` : ''}
-                    <div class="action-buttons">
-                        <button class="primary-button" onclick="window.open('${item.url}', '_blank')">
-                            <i class="fas fa-external-link-alt"></i> Open Assignment
-                        </button>
                     </div>
                 `;
 
-                // Add event listeners for description toggle
-                const toggleDescBtn = element.querySelector('.toggle-description');
-                if (toggleDescBtn) {
-                    toggleDescBtn.addEventListener('click', function() {
-                        const preview = element.querySelector('.description-preview');
-                        const full = element.querySelector('.full-description');
-                        const isExpanded = full.style.display === 'block';
+                    // Add event listener to checkbox
+                    const checkbox = itemElement.querySelector('.item-checkbox');
+                    checkbox.addEventListener('change', function() {
+                        const itemId = this.getAttribute('data-item-id');
+                        const courseId = this.getAttribute('data-course-id');
                         
-                        preview.style.display = isExpanded ? 'block' : 'none';
-                        full.style.display = isExpanded ? 'none' : 'block';
-                        this.textContent = isExpanded ? 'Show More' : 'Show Less';
-                    });
-                }
-
-                // Add event listeners for rubric toggle
-                const toggleRubricBtn = element.querySelector('.toggle-rubric');
-                if (toggleRubricBtn) {
-                    toggleRubricBtn.addEventListener('click', function() {
-                        const rubricDetails = element.querySelector('.rubric-details');
-                        const isExpanded = rubricDetails.style.display === 'block';
+                        // Find the item and update it
+                        const courseItems = groupedItems[courseId];
+                        if (courseItems) {
+                            const item = courseItems.find(i => i.id === itemId);
+                            if (item) {
+                                item.selected = this.checked;
+                            }
+                        }
                         
-                        rubricDetails.style.display = isExpanded ? 'none' : 'block';
-                        this.textContent = isExpanded ? 'Show Rubric' : 'Hide Rubric';
+                        // Check if all items are selected or not
+                        const allCheckboxes = document.querySelectorAll('.item-checkbox');
+                        const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
+                        const selectAllCb = document.getElementById('selectAll');
+                        if (selectAllCb) {
+                            selectAllCb.checked = allChecked;
+                        }
                     });
+                } else if (type === 'recordings') {
+                    // Existing recording item display code
+                    // ... (keep existing code for recordings)
                 }
-            } else {
-                element.innerHTML = `
-                    <div class="item-title">${item.title}</div>
-                    <div class="item-details">
-                        <span><i class="fas fa-calendar"></i> ${item.date}</span>
-                        <span><i class="fas fa-user"></i> ${item.host}</span>
-                    </div>
-                    <div class="action-buttons">
-                        <button class="primary-button" onclick="window.open('${item.url}', '_blank')">
-                            <i class="fas fa-play"></i> Watch Recording
-                        </button>
-                    </div>
-                `;
-            }
+                
+                itemsList.appendChild(itemElement);
+            });
             
-            resultsContainer.appendChild(element);
+            courseSection.appendChild(itemsList);
+            resultsContainer.appendChild(courseSection);
         });
+        
+        // Add submit button for assignments
+        if (type === 'assignments' && items.length > 0) {
+            const submitButtonContainer = document.createElement('div');
+            submitButtonContainer.className = 'submit-container';
+            
+            const submitButton = document.createElement('button');
+            submitButton.className = 'action-button submit-button';
+            submitButton.innerHTML = '<i class="fas fa-upload"></i> Submit Selected Assignments';
+            submitButton.addEventListener('click', async () => {
+                try {
+                    submitButton.disabled = true;
+                    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+                    
+                    // Get all selected items
+                    const selectedItems = [];
+                    Object.keys(groupedItems).forEach(courseName => {
+                        groupedItems[courseName].forEach(item => {
+                            if (item.selected) {
+                                selectedItems.push(item);
+                            }
+                        });
+                    });
+                    
+                    if (selectedItems.length === 0) {
+                        showError('Please select at least one assignment to submit');
+                        submitButton.disabled = false;
+                        submitButton.innerHTML = '<i class="fas fa-upload"></i> Submit Selected Assignments';
+                        return;
+                    }
+                    
+                    // Get the course ID from the first item
+                    const firstItem = selectedItems[0];
+                    let courseId = getCourseIdFromUrl(firstItem.url);
+                    
+                    // If courseId is still not found, extract it from the URL
+                    if (!courseId && firstItem.url) {
+                        try {
+                            const urlObj = new URL(firstItem.url);
+                            const pathParts = urlObj.pathname.split('/');
+                            const courseIdx = pathParts.indexOf('courses');
+                            if (courseIdx !== -1 && courseIdx + 1 < pathParts.length) {
+                                courseId = pathParts[courseIdx + 1];
+                            }
+                        } catch (e) {
+                            console.error('Error parsing URL:', e);
+                        }
+                    }
+                    
+                    if (!courseId) {
+                        throw new Error('Could not determine course ID');
+                    }
+                    
+                    console.log('Using course ID for submission:', courseId);
+                    
+                    // Get authentication token using AuthUtils
+                    const tokenResult = await AuthUtils.getAuthToken();
+                    
+                    if (!tokenResult) {
+                        console.error('Authentication token not found');
+                        throw new Error('Not authenticated. Please log in.');
+                    }
+                    
+                    // Generate a unique batch ID for this upload session
+                    const upload_batch_id = self.crypto.randomUUID ? self.crypto.randomUUID() : 
+                        'batch_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+                    console.log('Generated upload batch ID:', upload_batch_id);
+                    
+                    // Prepare data for submission
+                    const assignmentsData = selectedItems.map(item => ({
+                        title: item.title,
+                        url: item.url,
+                        dueDate: item.dueDate || null,
+                        description: item.description || null,
+                        rubric: item.rubric || null,
+                        assignmentGroup: item.assignmentGroup || "Uncategorized",
+                        points: item.points || 0,  // Ensure points is never null
+                        status: item.status || "Not Started",  // Ensure status is never null
+                        courseId: courseId
+                    }));
+                    
+                    // Send to backend
+                    console.log('ApiUtils:', Object.keys(ApiUtils));
+                    console.log('CONFIG:', CONFIG);
+                    
+                    const apiUrl = CONFIG.API_BASE_URL;
+                    console.log('Using API URL:', apiUrl);
+                    
+                    // Prepare the submission endpoint
+                    const endpoint = `/assignments/store`;
+                    const fullUrl = `${apiUrl}${endpoint}`;
+                    
+                    // Prepare the submission payload with batch ID
+                    const payload = {
+                        courseId: courseId,
+                        assignments: assignmentsData,
+                        upload_batch_id: upload_batch_id
+                    };
+                    
+                    console.log('Submitting to endpoint:', fullUrl);
+                    console.log('Payload:', {
+                        courseId: courseId,
+                        assignments: assignmentsData.length,
+                        upload_batch_id: upload_batch_id
+                    });
+                    
+                    const response = await fetch(fullUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${tokenResult}`
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    console.log('Response status:', response.status);
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.detail || 'Failed to submit assignments');
+                    }
+                    
+                    const result = await response.json();
+                    
+                    // Show success message with batch ID for reference
+                    submitButton.innerHTML = '<i class="fas fa-check"></i> Submitted Successfully';
+                    submitButton.classList.add('submit-success');
+                    
+                    // Add success message with batch info
+                    const successMessage = document.createElement('div');
+                    successMessage.className = 'success-message';
+                    successMessage.innerHTML = `
+                        <i class="fas fa-check-circle"></i>
+                        ${result.message || 'Assignments submitted successfully'}
+                        <span class="batch-id" title="Click to copy batch ID">(Batch ID: ${result.upload_batch_id || upload_batch_id})</span>
+                    `;
+                    submitButtonContainer.appendChild(successMessage);
+                    
+                    // Add click handler to copy batch ID when clicked
+                    const batchIdElement = successMessage.querySelector('.batch-id');
+                    if (batchIdElement) {
+                        batchIdElement.addEventListener('click', async (e) => {
+                            e.stopPropagation();
+                            const batchId = result.upload_batch_id || upload_batch_id;
+                            try {
+                                await navigator.clipboard.writeText(batchId);
+                                const originalText = batchIdElement.innerHTML;
+                                batchIdElement.innerHTML = '(Copied!)';
+                                
+                                // Store batch information in local storage
+                                chrome.storage.local.get(['uploadBatches'], (result) => {
+                                    const batches = result.uploadBatches || [];
+                                    // Check if batch already exists
+                                    const existingBatchIndex = batches.findIndex(b => b.id === batchId);
+                                    if (existingBatchIndex === -1) {
+                                        batches.push({
+                                            id: batchId,
+                                            type: 'assignments',
+                                            count: assignmentsData.length,
+                                            timestamp: Date.now(),
+                                            courseId: courseId
+                                        });
+                                        chrome.storage.local.set({ uploadBatches: batches });
+                                    }
+                                });
+                                
+                                setTimeout(() => {
+                                    batchIdElement.innerHTML = originalText;
+                                }, 1500);
+                            } catch (error) {
+                                console.error('Failed to copy batch ID:', error);
+                            }
+                        });
+                    }
+                    
+                    // Schedule removal of success message
+                    setTimeout(() => {
+                        successMessage.style.opacity = '0';
+                        setTimeout(() => {
+                            successMessage.remove();
+                            submitButton.disabled = false;
+                            submitButton.innerHTML = '<i class="fas fa-upload"></i> Submit Selected Assignments';
+                            submitButton.classList.remove('submit-success');
+                        }, 500);
+                    }, 3000);
+                    
+                } catch (error) {
+                    console.error('Submission error:', error);
+                    showError(error.message || 'Failed to submit assignments');
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = '<i class="fas fa-upload"></i> Submit Selected Assignments';
+                }
+            });
+            
+            submitButtonContainer.appendChild(submitButton);
+            resultsContainer.appendChild(submitButtonContainer);
+        }
+        
+        // Show results container
+        resultsContainer.style.display = 'block';
+        
+        // Hide loading indicators
+        setLoading(false);
+    }
+
+    // Helper function to extract course ID from URL
+    function getCourseIdFromUrl(url) {
+        if (!url) return null;
+        const match = url.match(/\/courses\/(\d+)/);
+        return match ? match[1] : null;
     }
 
     // Add message listener for progress updates
@@ -729,177 +1065,57 @@ document.addEventListener('DOMContentLoaded', function() {
         return false;
     });
 
-    // Assignments button click handler
-    if (assignmentsButton) {
-        assignmentsButton.addEventListener('click', async () => {
-            try {
-                const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
-                const currentUrl = tab.url;
-                
-                if (!currentUrl.includes('instructure.com')) {
-                    showError('Please navigate to Canvas first');
-                    return;
-                }
-
-                const courseId = currentUrl.match(/\/courses\/(\d+)/)?.[1];
-                if (!courseId) {
-                    showError('Please navigate to a Canvas course first');
-                    return;
-                }
-                
-                if (currentUrl.includes('/assignments')) {
-                    // On assignments page - start scraping
-                    clearError();
-                    setLoading(true, 'assignments');
-                    showProgress('Scraping assignments...', 'Initializing...', 0, 0);
-
-                    // Send message to background script to start scraping
-                    try {
-                        chrome.runtime.sendMessage({
-                            sender: "popup",
-                            receiver: "background",
-                            destination: "content_canvas",
-                            action: "scrape",
-                            tab: tab,
-                            webpage: "canvas"
-                        });
-                    } catch (error) {
-                        setLoading(false, null);
-                        showError('Error communicating with the page. Please refresh and try again.');
-                        console.error('Message send error:', error);
-                    }
-                } else {
-                    // Navigate to assignments page
-                    navigateToAssignments(courseId);
-                }
-            } catch (error) {
-                setLoading(false, null);
-                showError(error.message);
-            }
-        });
-    }
-
-    // Inbox button click handler
-    if (inboxButton) {
-        inboxButton.addEventListener('click', async () => {
-            try {
-                const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
-                const currentUrl = tab.url;
-                
-                if (!currentUrl.includes('instructure.com')) {
-                    showError('Please navigate to Canvas first');
-                    return;
-                }
-                
-                if (currentUrl.includes('/conversations')) {
-                    // On inbox page - start scraping
-                    clearError();
-                    setLoading(true, 'recordings');
-                    showProgress('Scraping recordings...', 'Initializing...', 0, 0);
-
-                    // First inject the content script
-                    try {
-                        await chrome.scripting.executeScript({
-                            target: { tabId: tab.id },
-                            files: ['scripts/recording-scraper.js']
-                        });
-
-                        // Then send the message to start scraping
-                        chrome.tabs.sendMessage(tab.id, { 
-                            action: 'scrapeRecordings'
-                        }, response => {
-                            if (chrome.runtime.lastError) {
-                                console.error('Error:', chrome.runtime.lastError);
-                                setLoading(false, null);
-                                showError('Error communicating with the page. Please refresh and try again.');
-                                return;
-                            }
-
-                            if (!response || !response.success) {
-                                setLoading(false, null);
-                                showError(response?.error || 'Failed to scrape recordings');
-                                return;
-                            }
-
-                            // Show completion message in progress bar
-                            showProgress(
-                                'Scraping complete!',
-                                `Successfully extracted ${response.stats.successful} of ${response.stats.total} recordings`,
-                                response.stats.successful,
-                                response.stats.total
-                            );
-
-                            // Display results with stats and hide loading UI
-                            displayResults(response.recordings, 'recordings', response.stats, false);
-                            setLoading(false, null);
-                            
-                            // Re-enable buttons
-                            updateButtonStates(false);
-                        });
-                    } catch (error) {
-                        console.error('Script injection error:', error);
-                        setLoading(false, null);
-                        showError('Failed to initialize recording scraper. Please refresh and try again.');
-                    }
-                } else {
-                    // Navigate to inbox
-                    chrome.tabs.update(tab.id, {
-                        url: 'https://ufl.instructure.com/conversations'
-                    });
-                    window.close();
-                }
-            } catch (error) {
-                setLoading(false, null);
-                showError(error.message);
-            }
-        });
-    }
-
-    // Stop button click handler
-    if (stopButton) {
-        stopButton.addEventListener('click', async () => {
-            if (!isScrapingActive) return;
-
-            try {
-                const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
-                
-                // Send cancel message to content script
-                chrome.tabs.sendMessage(tab.id, { action: 'cancelScraping' });
-                
-                // Send cancel message to background script
-                chrome.runtime.sendMessage({ action: 'cancelScraping' });
-                
-                // Reset UI state
-                setLoading(false, null);
-                showError('Scraping cancelled');
-                
-                // Clear results container without showing completion status
-                if (resultsContainer) {
-                    resultsContainer.innerHTML = '';
-                }
-                
-                // Clear any stored scraping state
-                chrome.storage.local.remove('scrapingState');
-            } catch (error) {
-                console.error('Error cancelling scraping:', error);
-            }
-        });
-    }
-
-    // Add a general tab update listener to keep UI in sync
-    chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    // Define the missing handler functions
+    function handleAssignmentsClick() {
+        // Get active tab URL instead of popup window URL
         chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-            if (tabs[0].id === tabId && changeInfo.status === 'complete') {
-                checkCurrentPage();
+            if (!tabs || !tabs[0]) {
+                showError('Unable to determine current page');
+                return;
+            }
+            
+            const url = tabs[0].url;
+            if (isOnAssignmentsPage(url)) {
+                scrapeAssignments();
+            } else {
+                const courseId = getCourseId(url);
+                if (courseId) {
+                    navigateToAssignments(courseId);
+                } else {
+                    showError('Please navigate to a Canvas course first');
+                }
             }
         });
-    });
+    }
 
-    // Check current page when popup opens
-    checkCurrentPage();
+    function handleInboxClick() {
+        // Get active tab URL instead of popup window URL
+        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+            if (!tabs || !tabs[0]) {
+                showError('Unable to determine current page');
+                return;
+            }
+            
+            const url = tabs[0].url;
+            if (url.includes('/conversations')) {
+                scrapeRecordings();
+            } else {
+                chrome.tabs.update(tabs[0].id, { url: 'https://ufl.instructure.com/conversations' });
+            }
+        });
+    }
 
-    // Add URL hash change listener to detect course selection in inbox
-    window.addEventListener('hashchange', checkCurrentPage);
+    function handleStopClick() {
+        if (isScrapingActive) {
+            chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+                if (tabs[0]) {
+                    chrome.tabs.sendMessage(tabs[0].id, { action: 'cancelScraping' });
+                    resetScrapingState();
+                    showMessage('Scraping cancelled', 'info');
+                }
+            });
+        }
+    }
 
     // Function to handle logout
     async function handleLogout() {
@@ -964,4 +1180,21 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error updating user info:', error);
         }
     }
+
+    // Add new function to view batches (can be called from developer tools)
+    window.viewAssignmentBatches = function() {
+        chrome.storage.local.get(['uploadBatches'], (result) => {
+            const batches = result.uploadBatches || [];
+            if (batches.length === 0) {
+                console.log('No assignment batches found in storage');
+                return;
+            }
+            
+            console.log(`Found ${batches.length} assignment batches:`);
+            batches.forEach((batch, index) => {
+                const date = new Date(batch.timestamp);
+                console.log(`Batch ${index + 1}: ID=${batch.id}, Type=${batch.type}, Count=${batch.count}, Course=${batch.courseId}, Date=${date.toLocaleString()}`);
+            });
+        });
+    };
 }); 

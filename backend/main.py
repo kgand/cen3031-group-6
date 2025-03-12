@@ -10,6 +10,7 @@ import jwt
 from datetime import datetime, timedelta
 import importlib
 import logging
+import uuid
 
 # Configure logging
 logging.basicConfig(
@@ -60,6 +61,22 @@ class Token(BaseModel):
     user_id: str
     email: str
     email_confirmation_required: Optional[bool] = None
+
+class Assignment(BaseModel):
+    title: str
+    url: str
+    dueDate: Optional[str] = None
+    description: Optional[str] = None
+    rubric: Optional[list] = None
+    courseId: str
+    assignmentGroup: Optional[str] = "Uncategorized"
+    points: float = 0  # Default to 0 points
+    status: str = "Not Started"  # Default status
+
+class AssignmentSubmission(BaseModel):
+    courseId: str
+    assignments: list[Assignment]
+    upload_batch_id: Optional[str] = None  # Batch ID to group assignments by upload session
 
 # Helper functions
 def create_access_token(data: dict, expires_delta: timedelta = None):
@@ -338,6 +355,90 @@ async def logout(current_user: dict = Depends(get_current_user)):
     # Note: JWT tokens can't be invalidated server-side
     # Client should remove the token from storage
     return {"message": "Successfully logged out"}
+
+@app.post("/assignments/store")
+async def store_assignments(submission: AssignmentSubmission, current_user: dict = Depends(get_current_user)):
+    try:
+        # Get user ID from the authenticated user
+        user_id = current_user["user_id"]
+        
+        # Generate a batch ID if not provided
+        upload_batch_id = submission.upload_batch_id
+        if not upload_batch_id:
+            upload_batch_id = str(uuid.uuid4())
+            logger.info(f"Generated new upload batch ID: {upload_batch_id}")
+        
+        # Format data for insertion
+        assignments_data = []
+        for assignment in submission.assignments:
+            assignments_data.append({
+                "user_id": user_id,
+                "course_id": submission.courseId,
+                "title": assignment.title,
+                "url": assignment.url,
+                "due_date": assignment.dueDate,
+                "description": assignment.description,
+                "rubric": assignment.rubric,
+                "assignment_group": assignment.assignmentGroup or "Uncategorized",
+                "points": assignment.points if hasattr(assignment, 'points') else 0,
+                "status": assignment.status if hasattr(assignment, 'status') else "Not Started",
+                "upload_batch_id": upload_batch_id,  # Add the batch ID to each assignment
+                "created_at": datetime.utcnow().isoformat()
+            })
+        
+        # Insert data into Supabase
+        response = supabase.table("assignments").insert(assignments_data).execute()
+        
+        if hasattr(response, 'error') and response.error:
+            logger.error(f"Supabase error: {response.error}")
+            raise HTTPException(status_code=500, detail=f"Failed to store assignments: {response.error}")
+        
+        # Return success with the batch ID for client reference
+        return {
+            "status": "success", 
+            "message": f"Successfully stored {len(assignments_data)} assignments",
+            "upload_batch_id": upload_batch_id,
+            "count": len(assignments_data)
+        }
+    
+    except Exception as e:
+        logger.error(f"Error storing assignments: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to store assignments: {str(e)}")
+
+@app.get("/assignments/batch/{batch_id}")
+async def get_assignments_by_batch(batch_id: str, current_user: dict = Depends(get_current_user)):
+    try:
+        # Get user ID from the authenticated user
+        user_id = current_user["user_id"]
+        
+        # Query assignments by batch ID and user ID
+        response = supabase.table("assignments").select("*").eq("upload_batch_id", batch_id).eq("user_id", user_id).execute()
+        
+        if hasattr(response, 'error') and response.error:
+            logger.error(f"Supabase error: {response.error}")
+            raise HTTPException(status_code=500, detail=f"Failed to retrieve assignments: {response.error}")
+        
+        # Get the assignments from the response
+        assignments = response.data
+        
+        if not assignments:
+            return {
+                "status": "success",
+                "message": "No assignments found for this batch ID",
+                "assignments": []
+            }
+        
+        # Return the assignments
+        return {
+            "status": "success",
+            "message": f"Found {len(assignments)} assignments for batch ID {batch_id}",
+            "assignments": assignments,
+            "upload_batch_id": batch_id
+        }
+    
+    except Exception as e:
+        logger.error(f"Error retrieving assignments by batch: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve assignments: {str(e)}")
 
 # Import and include the render module
 if importlib.util.find_spec("render"):

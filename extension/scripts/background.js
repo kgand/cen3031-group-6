@@ -243,6 +243,66 @@ async function scrapeContentFromTab(tabId) {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log('Background script received message:', request);
 
+    if (request.action === "scrapeAssignmentContent") {
+        console.log('Processing scrapeAssignmentContent request:', request.url);
+        
+        // Keep track of the original tab
+        chrome.tabs.query({ active: true, currentWindow: true }, async function(tabs) {
+            const originalTabId = tabs[0].id;
+            
+            try {
+                // Create a new tab to load the assignment
+                const newTab = await chrome.tabs.create({ 
+                    url: request.url, 
+                    active: false 
+                });
+                
+                // Wait for the tab to load
+                chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
+                    if (tabId === newTab.id && info.status === 'complete') {
+                        // Remove the listener once we're done
+                        chrome.tabs.onUpdated.removeListener(listener);
+                        
+                        // Extract content from the page
+                        setTimeout(async () => {
+                            try {
+                                const content = await scrapeContentFromTab(newTab.id);
+                                
+                                // Close the tab after scraping
+                                chrome.tabs.remove(newTab.id);
+                                
+                                // Send the content back to the original tab
+                                sendResponse({
+                                    content: content
+                                });
+                            } catch (error) {
+                                console.error('Error during content scraping:', error);
+                                // Close the tab on error
+                                chrome.tabs.remove(newTab.id);
+                                
+                                // Send error response
+                                sendResponse({
+                                    error: 'Failed to scrape content: ' + (error.message || 'Unknown error')
+                                });
+                            }
+                        }, 1000); // Wait a bit for dynamic content to load
+                    }
+                });
+                
+                return true; // Keep the message channel open
+                
+            } catch (error) {
+                console.error('Error creating tab for content scraping:', error);
+                sendResponse({
+                    error: 'Failed to create tab for content scraping: ' + (error.message || 'Unknown error')
+                });
+                return false; // No need to keep the channel open
+            }
+        });
+        
+        return true; // Keep the message channel open for async response
+    }
+
     if (request.receiver === "background") {
         if (request.sender === "popup") {
             // Request to start scraping the webpage
@@ -401,91 +461,32 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                         });
                         return;
                     }
-
-                    // If cancellation was requested during processing, override the response
-                    if (scrapingCancelled) {
-                        sendResponse({ status: 'cancelled', error: 'Scraping was cancelled.' });
-                        return;
-                    }
-
-                    // Send start message to popup
-                    chrome.runtime.sendMessage({
-                        status: 'scraping_start_success',
-                        receiver: 'popup'
-                    });
-
-                    // Handle progress updates
-                    if (response.progress) {
-                        chrome.runtime.sendMessage({
-                            action: 'updateProgress',
-                            data: response.progress
+                    
+                    // Process the response
+                    if (response.status === 'error') {
+                        sendResponse({
+                            status: 'error',
+                            error: response.error || 'Unknown error occurred'
+                        });
+                    } else {
+                        sendResponse({
+                            status: 'success',
+                            assignments: response.assignments || []
                         });
                     }
-
-                    // Handle completion
-                    if (response.status === 'complete') {
-                        chrome.runtime.sendMessage({
-                            status: 'scraping_done',
-                            receiver: 'popup',
-                            data: response
-                        });
-                    }
-
-                    sendResponse(response);
                 });
+                
             } catch (error) {
                 console.error('Error in scrapeAssignments:', error);
                 sendResponse({
                     status: 'error',
-                    error: 'An unexpected error occurred. Please refresh the page and try again.'
+                    error: error.message || 'An unexpected error occurred'
                 });
             }
         });
         
-        return true; // Keep the message channel open for async response
+        return true; // Important: Keep the message channel open for async response
     }
 
-    if (request.action === 'scrapeAssignmentContent') {
-        console.log('Background script received scrape request for:', request.url);
-        
-        // Create a tab and scrape content
-        chrome.tabs.create({ 
-            url: request.url,
-            active: false
-        }, async (tab) => {
-            try {
-                // Wait for tab to load
-                await new Promise(resolve => {
-                    chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
-                        if (tabId === tab.id && info.status === 'complete') {
-                            chrome.tabs.onUpdated.removeListener(listener);
-                            // Add a small delay to ensure dynamic content is loaded
-                            setTimeout(resolve, 1000);
-                        }
-                    });
-                });
-
-                // Scrape content
-                const content = await scrapeContentFromTab(tab.id);
-
-                // Close the tab
-                chrome.tabs.remove(tab.id);
-
-                // Send response back
-                sendResponse({ content });
-
-            } catch (error) {
-                console.error('Error scraping content:', error);
-                if (tab) {
-                    chrome.tabs.remove(tab.id);
-                }
-                sendResponse({ error: error.message });
-            }
-        });
-
-        // Keep the message channel open
-        return true;
-    }
-
-    return false; // Don't keep the message channel open for other messages
+    return false; // Default response for messages we don't handle
 }); 
