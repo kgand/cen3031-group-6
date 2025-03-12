@@ -11,22 +11,70 @@ import './styles/landing.css'
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
 import Dashboard from "./pages/Dashboard";
-import React from "react";
-import Home from "./pages/home";
+import React, { useEffect } from "react";
+import { useAtom } from 'jotai';
+
+
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import Nav from "./components/nav";
+
 import ConfirmEmail from "./pages/ConfirmEmail";
+import Home from "./pages/Home";
+import Nav from "./components/Nav";
+import { isLoadingUserAtom, userAtom } from "./store";
 
 
-const requireAuth: LoaderFunction = () => {
-  const isAuthenticated = Boolean(localStorage.getItem('token'));
+const API_URL = import.meta.env.VITE_API_URL;
+
+// Define a function to fetch user that can be used both by the loader and in components
+const fetchUser = async (token: string) => {
+  try {
+    const response = await fetch(`${API_URL}/auth/me`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to authenticate');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    localStorage.removeItem('token'); // Clear invalid token
+    return null;
+  }
+};
+
+const requireAuth: LoaderFunction = async () => {
+  const token = localStorage.getItem('token');
   
-  if (!isAuthenticated) {
+  if (!token) {
     return redirect('/login');
   }
   
-  return null;
+  // Make a full authentication check, including verification status
+  try {
+    const userData = await fetchUser(token);
+    
+    if (!userData) {
+      // Token is invalid or user doesn't exist
+      return redirect('/login');
+    }
+    
+    // Here we could check any additional conditions from userData
+    // For example, if the API returns an "email_verified" field:
+    if (userData.email_verification_required) {
+      return redirect('/confirm-email');
+    }
+    
+    // User is fully authenticated
+    return null;
+  } catch (error) {
+    console.error('Authentication check failed:', error);
+    return redirect('/login');
+  }
 };
 
 interface LayoutProps {
@@ -71,8 +119,30 @@ const router = createBrowserRouter([
   }
 ]);
 
-const App: React.FC = () => {
+// App initialization component
+const AppWrapper: React.FC = () => {
+  const [, setUser] = useAtom(userAtom);
+  const [, setIsLoading] = useAtom(isLoadingUserAtom);
+
+  useEffect(() => {
+    const initAuth = async () => {
+      setIsLoading(true);
+      const token = localStorage.getItem('token');
+      if (token) {
+        const userData = await fetchUser(token);
+        setUser(userData);
+      }
+      setIsLoading(false);
+    };
+
+    initAuth();
+  }, [setUser, setIsLoading]);
+
   return <RouterProvider router={router} />;
+};
+
+const App: React.FC = () => {
+  return <AppWrapper />;
 };
 
 export default App;

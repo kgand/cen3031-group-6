@@ -2,20 +2,33 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import SignInUpBox from "../components/ui/SignInUpBox";
 import useSignUp from "../hooks/useSignUp";
+import Footer from "../components/Footer";
 
 export default function SignUp() {
   return (
-    <div className="mx-auto mt-32 flex max-w-[575px] justify-center">
-      <SignInUpBox>
-        <SignUpMenu />
-      </SignInUpBox>
-    </div>
+    <>
+    <div className="bg-primary-700 absolute top-24 hidden h-px w-full md:block" />
+      <div className="fixed inset-0 p-1">
+        <div className="relative z-10 mx-auto flex h-full w-full max-w-6xl justify-between">
+          <div className="bg-primary-700 w-px" />
+          <div className="bg-primary-700 w-px" />
+        </div>
+      </div>
+      <div className="flex min-h-screen flex-col justify-between w-full gap-16 relative">
+        <div className="mx-auto mt-40 flex max-w-[575px] justify-center w-full">
+          <SignInUpBox>
+            <SignUpMenu />
+          </SignInUpBox>
+        </div>
+        <Footer />
+      </div>
+    </>
   );
 }
 
 const SignUpMenu: React.FC = () => {
   return (
-    <div className="border-primary-600 flex flex-col items-center rounded-sm border p-6">
+    <div className="border-primary-700 flex flex-col items-center rounded-sm border p-6 relative">
       <figure>
         <img src="/images/nav-logo.png" alt="" className="max-w-32" />
       </figure>

@@ -1,6 +1,9 @@
+import { useAtom } from "jotai"
+import { userAtom } from "../store"
 
 export default function Dashboard() {
+  const [user] = useAtom(userAtom)
   return (
-    <div>You are signed in</div>
+    <div>{JSON.stringify(user)}</div>
   )
 }

@@ -2,7 +2,7 @@ import LandingBento from "../components/LandingBento";
 import LandingMac from "../components/LandingMac";
 import LandingSecurity from "../components/LandingSecurity";
 import LandingHero from "../components/LandingHero";
-import Footer from "../components/footer";
+import Footer from "../components/Footer";
 
 export default function Home() {
   return (

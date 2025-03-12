@@ -1,52 +1,43 @@
-import { useState } from 'react';
+import { useAtom } from 'jotai';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-
-import { LoginResponse } from '../types/auth';
-
-const API_URL = import.meta.env.VITE_API_URL;
+import { loginAtom, logoutAtom, authErrorAtom } from '../store';
 
 const useSignInOut = () => {
   const navigate = useNavigate();
-  const [error, setError] = useState<string | null>(null);
+  const [, login] = useAtom(loginAtom);
+  const [, logout] = useAtom(logoutAtom);
+  const [error] = useAtom(authErrorAtom);
 
   const loginWithRedirect = async (email: string, password: string) => {
-    setError(null);
-    // Display a loading toast
-    toast.loading("Logging in...");
-
+    // Show a loading toast
+    const toastId = toast.loading("Logging in...");
     try {
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email, password })
+      // Call the loginAtom write function with credentials
+      await login({ email, password });
+      // Update toast to success message
+      toast.update(toastId, {
+        render: "Logged in successfully",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
       });
-
-      const data: LoginResponse & { detail?: string } = await response.json();
-
-      if (!response.ok) {
-        const errorMessage = data.detail || 'Login failed';
-        setError(errorMessage);
-        toast.error(errorMessage);
-        return;
-      }
-
-      // Store token and update toast
-      localStorage.setItem('token', data.access_token);
-      toast.success("Logged in successfully");
       navigate('/dashboard', { replace: true });
-    } catch (err: any) {
-      const errorMessage = err.message || 'Network error. Please try again.';
-      setError(errorMessage);
-      toast.dismiss();
-      toast.error(errorMessage);
+    } catch (error: any) {
+      // If an error occurs, update the toast accordingly
+      const errorMessage = error.message || 'Login failed';
+      toast.update(toastId, {
+        render: errorMessage,
+        type: "error",
+        isLoading: false,
+        autoClose: 3000,
+      });
     }
   };
 
   const logoutWithRedirect = () => {
-    localStorage.removeItem('token');
+    // Call the logoutAtom write function to clear user data and token
+    logout();
     toast("Logged out successfully 👋");
     navigate('/', { replace: true });
   };

@@ -2,7 +2,7 @@ import { PrivacyWidget1, PrivacyWidget2 } from "./ui/PrivacyWidgets";
 
 export default function LandingSecurity() {
   return (
-    <div className="border-primary-700 border-b py-28">
+    <div className="py-28">
       <div className="mx-auto max-w-6xl p-6 sm:px-8">
         <h3 className="text-center text-3xl sm:text-4xl text-balance font-medium tracking-tight">
           No need to worry about privacy
