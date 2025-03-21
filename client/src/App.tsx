@@ -13,13 +13,14 @@ import { ToastContainer } from "react-toastify";
 import "./styles/app.css";
 import "./styles/fonts.css";
 import "./styles/landing.css";
+import "./styles/dashboard.css";
 import "react-toastify/dist/ReactToastify.css";
 // pages
-import Login from "./pages/Login";
+import Login from "./pages/login";
 import SignUp from "./pages/SignUp";
 import Dashboard from "./pages/Dashboard";
 import ConfirmEmail from "./pages/ConfirmEmail";
-import Home from "./pages/Home";
+import Home from "./pages/home";
 // layouts
 import HomeLayout from "./layouts/HomeLayout";
 import DashboardLayout from "./layouts/DashboardLayout";

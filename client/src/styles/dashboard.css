@@ -1,0 +1,7 @@
+.active-tab-wrapper {
+    padding: 1px;
+    background: linear-gradient(#4A4A4A,#4A4A4A44);
+}
+.active-tab {
+  background: linear-gradient(180deg, #404040 0%, #242424 67.19%);
+}

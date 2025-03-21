@@ -32,7 +32,7 @@ export default function LandingHero() {
           </a>
         </div>
 
-        <MacbookScroll src="/images/landing/pc.png" />
+        <MacbookScroll src="/test.png" />
         <h3 className="text-center text-3xl sm:text-4xl font-medium tracking-tight text-balance">
           Canvas LMS and Lecture Integration
         </h3>
