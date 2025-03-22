@@ -13,6 +13,7 @@ import { ToastContainer } from "react-toastify";
 import "./styles/app.css";
 import "./styles/fonts.css";
 import "./styles/landing.css";
+import "./styles/dashboard.css";
 import "react-toastify/dist/ReactToastify.css";
 // pages
 import Login from "./pages/Login";

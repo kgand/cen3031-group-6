@@ -12,7 +12,7 @@ const useSignUp = () => {
   const { loginWithRedirect } = useSignInOut();
   const navigate = useNavigate();
 
-  const signUp = async (email: string, password: string, fullName?: string) => {
+  const signUp = async (email: string, password: string, fullName: string) => {
     setError(null);
     setLoading(true);
     const signupToastId = toast.loading("Signing up...");
@@ -23,7 +23,7 @@ const useSignUp = () => {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ email, password, full_name: fullName || "Test Name"})
+        body: JSON.stringify({ email, password, full_name: fullName})
       });
 
       const data: SignupResponse & { detail?: string } = await response.json();
