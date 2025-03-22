@@ -61,7 +61,7 @@ export default function DashboardNav() {
   const { logoutWithRedirect } = useSignInOut();
 
   return (
-    <div className="max-h-screen min-w-72 overflow-y-auto p-6">
+    <div className="max-h-screen min-w-68 overflow-y-auto p-6">
       <div className="border-primary-700 flex items-center gap-3 border-b border-dashed pb-4">
         <img src="/favicon.png" alt="" className="h-7 w-7" />
         <p className="text-lg font-medium">FaciliGator</p>

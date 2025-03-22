@@ -16,11 +16,11 @@ import "./styles/landing.css";
 import "./styles/dashboard.css";
 import "react-toastify/dist/ReactToastify.css";
 // pages
-import Login from "./pages/login";
+import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
 import Dashboard from "./pages/Dashboard";
 import ConfirmEmail from "./pages/ConfirmEmail";
-import Home from "./pages/home";
+import Home from "./pages/Home";
 // layouts
 import HomeLayout from "./layouts/HomeLayout";
 import DashboardLayout from "./layouts/DashboardLayout";

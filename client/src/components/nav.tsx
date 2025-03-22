@@ -76,7 +76,7 @@ export default function Nav() {
         <div className="relative flex items-center justify-end gap-4">
           {location.pathname == "/" ? (
             <Link
-              to={user ? "/dashboard" : "/signup"}
+              to={user ? "/dashboard" : "/login"}
               className="bg-primary-100 text-primary-900 cta flex items-center rounded-md px-6 pt-[11px] pb-[9px] text-sm sm:px-8 sm:text-[15px] md:h-full"
             >
               <span>{user ? "Dashboard" : "Get Started"}</span>
@@ -84,8 +84,8 @@ export default function Nav() {
           ) : (
             <>
               <Link to={"/"} className="hidden md:block pr-2 text-primary-200 text-sm">Home</Link>
-              <Link to={"/"} className="hidden md:blockpr-2 text-primary-200 text-sm">Login</Link>
-              <Link to={"/"} className="hidden md:block pr-4 text-primary-200 text-sm">Sign Up</Link>
+              <Link to={"/login"} className="hidden md:blockpr-2 text-primary-200 text-sm">Login</Link>
+              <Link to={"/signup"} className="hidden md:block pr-4 text-primary-200 text-sm">Sign Up</Link>
             </>
           )}
           {user && (

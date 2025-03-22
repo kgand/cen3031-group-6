@@ -36,13 +36,14 @@ const SignUpMenu: React.FC = () => {
 const Form: React.FC = () => {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
+  const [fullName,setFullName] = useState<string>("")
   const [confirmPassword, setConfirmPassword] = useState<string>("");
   const [isValid, setIsValid] = useState<boolean>(false);
 
   const { signUp, loading } = useSignUp();
 
   useEffect(() => {
-    if (email.length > 0 && password.length > 0 && confirmPassword.length > 0) {
+    if (email.length > 0 && password.length > 0 && confirmPassword.length > 0 && fullName.length > 0) {
       setIsValid(true);
     } else {
       setIsValid(false);
@@ -52,11 +53,23 @@ const Form: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (loading || password != confirmPassword || !isValid) return;
-    await signUp(email, password);
+    await signUp(email, password, fullName);
   };
 
   return (
     <form className="mt-6 flex w-full flex-col gap-5" onSubmit={handleSubmit}>
+      <div className="text-primary-200 flex flex-col gap-2.5">
+        <label htmlFor="name">Email:</label>
+        <input
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          type="text"
+          required
+          placeholder="John Doe"
+          id="name"
+          className="bg-primary-800 border-primary-700 focus:border-primary-500 w-full rounded-sm border px-4 py-2 focus:outline-none"
+        />
+      </div>
       <div className="text-primary-200 flex flex-col gap-2.5">
         <label htmlFor="email">Email:</label>
         <input

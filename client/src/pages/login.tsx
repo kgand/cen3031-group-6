@@ -2,15 +2,15 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import useSignInOut from "../hooks/useSignInOut";
 import SignInUpBox from "../components/ui/SignInUpBox";
-import Footer from "../components/Footer";
 import Gridlines from "../components/ui/Gridlines";
+import Footer from "../components/Footer";
 
 export default function Login() {
   return (
     <>
-      <Gridlines/>
+      <Gridlines />
       <div className="relative flex min-h-screen w-full flex-col justify-between gap-16">
-        <div className="mx-auto mt-32 sm:mt-40 flex w-full max-w-[575px] justify-center">
+        <div className="mx-auto mt-32 flex w-full max-w-[575px] justify-center sm:mt-40">
           <SignInUpBox>
             <LoginMenu />
           </SignInUpBox>
@@ -23,7 +23,7 @@ export default function Login() {
 
 const LoginMenu: React.FC = () => {
   return (
-    <div className="border-primary-700 flex flex-col items-center rounded-sm p-3 sm:p-6 sm:border">
+    <div className="border-primary-700 flex flex-col items-center rounded-sm p-3 sm:border sm:p-6">
       <figure>
         <img src="/images/nav-logo.png" alt="" className="max-w-32" />
       </figure>
