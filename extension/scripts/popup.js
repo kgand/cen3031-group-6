@@ -1466,9 +1466,38 @@ function getFileIcon(fileType) {
 function displayAssignments(assignments) {
     if (!elements.downloadContainer) return;
 
+    // Store upload batch information in a variable that can be used later if needed
+    const currentBatchId = 'batch_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+    
+    // Save the batch information in the local storage for potential later use
+    chrome.storage.local.get(['uploadBatches'], (result) => {
+        const batches = result.uploadBatches || [];
+        const newBatch = {
+            id: currentBatchId,
+            type: 'assignments',
+            count: assignments.reduce((total, group) => total + group.assignments.length, 0),
+            timestamp: Date.now(),
+            courseId: assignments[0]?.courseId || 'unknown'
+        };
+        
+        batches.push(newBatch);
+        chrome.storage.local.set({ uploadBatches: batches });
+        console.log('Stored batch information:', newBatch);
+    });
+
     // Flatten all assignments into a single array
     const allAssignments = assignments.reduce((acc, group) => {
-        return acc.concat(group.assignments);
+        // Make sure each assignment has the group field populated and batch ID
+        const groupAssignments = group.assignments.map(assignment => {
+            return {
+                ...assignment,
+                assignmentGroup: assignment.assignmentGroup || "Uncategorized",
+                points: assignment.points || 0,  // Ensure points is never null
+                status: assignment.status || "Not Started",  // Ensure status is never null
+                batchId: currentBatchId  // Associate with this display batch
+            };
+        });
+        return acc.concat(groupAssignments);
     }, []);
 
     // Sort assignments by due date (if available)
