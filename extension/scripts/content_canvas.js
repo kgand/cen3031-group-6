@@ -194,23 +194,45 @@ if (window.faciligatorContentLoaded) {
 					action: 'scrapeAssignmentContent',
 					url: assignmentUrl
 				}, response => {
+					// Check for runtime error that could happen if the message port is closed
 					if (chrome.runtime.lastError) {
 						console.error('Error in message response:', chrome.runtime.lastError);
-						reject(chrome.runtime.lastError);
+						// Return a basic empty content object instead of rejecting
+						resolve({
+							description: 'Unable to load assignment content - ' + chrome.runtime.lastError.message,
+							rubric: null
+						});
 						return;
 					}
 					
-					if (response.error) {
+					if (response && response.error) {
 						console.error('Error from background script:', response.error);
-						reject(new Error(response.error));
+						// Return a basic content object with error info instead of rejecting
+						resolve({
+							description: 'Error loading assignment: ' + response.error,
+							rubric: null
+						});
 						return;
 					}
 					
-					resolve(response.content);
+					// If we have content, use it
+					if (response && response.content) {
+						resolve(response.content);
+					} else {
+						// If no content but also no error, return empty object
+						resolve({
+							description: '',
+							rubric: null
+						});
+					}
 				});
 			} catch (error) {
 				console.error('Error requesting content scrape:', error);
-				reject(error);
+				// Return a basic content object instead of rejecting
+				resolve({
+					description: 'Exception occurred: ' + error.message,
+					rubric: null
+				});
 			}
 		});
 	}
@@ -257,10 +279,16 @@ if (window.faciligatorContentLoaded) {
 				console.log('Found assignments:', assignmentItems.length);
 
 				if (assignmentItems.length === 0) {
-					throw new Error("No assignments found on this page");
+					// Even if no assignments are found, return a valid response object
+					return {
+						status: 'complete',
+						courseId: courseId,
+						assignments: []
+					};
 				}
 
 				let processedAssignments = 0;
+				let failedAssignments = 0;
 				const totalAssignments = assignmentItems.length;
 
 				// Process all assignments
@@ -268,7 +296,7 @@ if (window.faciligatorContentLoaded) {
 					// Check for cancellation at the start of each iteration
 					if (shouldCancel) {
 						console.log('Scraping cancelled during assignment processing');
-						return { status: 'cancelled' };
+						return { status: 'cancelled', courseId, assignments: allAssignments };
 					}
 
 					try {
@@ -277,6 +305,7 @@ if (window.faciligatorContentLoaded) {
 						if (!titleElement) {
 							console.log('Skipping item - no title element found');
 							processedAssignments++;
+							failedAssignments++;
 							continue;
 						}
 
@@ -347,14 +376,18 @@ if (window.faciligatorContentLoaded) {
 						}
 
 						// Send progress update
-						chrome.runtime.sendMessage({
-							action: 'updateProgress',
-							data: {
-								current: processedAssignments + 1,
-								total: totalAssignments,
-								currentTitle: title
-							}
-						});
+						try {
+							chrome.runtime.sendMessage({
+								action: 'updateProgress',
+								data: {
+									current: processedAssignments + 1,
+									total: totalAssignments,
+									currentTitle: title
+								}
+							});
+						} catch (progressError) {
+							console.warn('Failed to send progress update:', progressError);
+						}
 
 						// Get assignment details
 						const dueDateElement = item.querySelector('.assignment-date-due, .due_date');
@@ -414,9 +447,25 @@ if (window.faciligatorContentLoaded) {
 							}
 						}
 
-						// Get assignment content
-						const content = await scrapeAssignmentContent(url);
-						console.log('Got assignment content for:', title, content);
+						// Get assignment content - with error handling and timeout
+						let content;
+						try {
+							// Set up timeout for content scraping
+							const contentPromise = scrapeAssignmentContent(url);
+							const timeoutPromise = new Promise((_, reject) => {
+								setTimeout(() => reject(new Error('Content scraping timed out')), 10000);
+							});
+							
+							// Race between content scraping and timeout
+							content = await Promise.race([contentPromise, timeoutPromise]);
+							console.log('Got assignment content for:', title);
+						} catch (contentError) {
+							console.error('Error getting assignment content:', contentError);
+							content = {
+								description: 'Error retrieving content: ' + contentError.message,
+								rubric: null
+							};
+						}
 
 						const assignmentData = {
 							title,
@@ -426,8 +475,7 @@ if (window.faciligatorContentLoaded) {
 							rubric: content.rubric || [],
 							assignmentGroup: assignmentGroup,
 							points: points,
-							status: status,
-							fullHtml: content.fullHtml || ''
+							status: status
 						};
 
 						allAssignments.push(assignmentData);
@@ -438,8 +486,16 @@ if (window.faciligatorContentLoaded) {
 					} catch (error) {
 						console.error('Error processing individual assignment:', error);
 						processedAssignments++;
+						failedAssignments++;
+						
+						// Continue processing other assignments despite this error
 						if (shouldCancel) {
-							return { status: 'cancelled' };
+							return { 
+								status: 'cancelled', 
+								courseId,
+								assignments: allAssignments,
+								failedAssignments
+							};
 						}
 					}
 				}
@@ -450,16 +506,8 @@ if (window.faciligatorContentLoaded) {
 					status: shouldCancel ? 'cancelled' : 'complete',
 					courseId: courseId,
 					totalAssignments: allAssignments.length,
-					assignments: allAssignments.map(a => ({
-						title: a.title,
-						url: a.url,
-						dueDate: a.dueDate,
-						description: a.description,
-						rubric: a.rubric,
-						assignmentGroup: a.assignmentGroup,
-						points: a.points,
-						status: a.status
-					}))
+					failedAssignments,
+					assignments: allAssignments
 				}, null, 2));
 				console.log('ASSIGNMENTS_DATA_END');
 
@@ -467,12 +515,32 @@ if (window.faciligatorContentLoaded) {
 				return {
 					status: shouldCancel ? 'cancelled' : 'complete',
 					courseId: courseId,
-					assignments: allAssignments
+					assignments: allAssignments,
+					failedAssignments,
+					stats: {
+						total: totalAssignments,
+						processed: processedAssignments,
+						failed: failedAssignments,
+						successful: allAssignments.length
+					}
 				};
 
 			} catch (error) {
 				console.error('Error during assignment list processing:', error);
-				throw error;
+				
+				// Still return any assignments we were able to gather
+				return {
+					status: 'error',
+					courseId: courseId,
+					error: error.message || "An unexpected error occurred during assignment processing",
+					assignments: allAssignments, // Return any assignments we've collected so far
+					stats: {
+						total: allAssignments.length,
+						processed: allAssignments.length,
+						failed: 0,
+						successful: allAssignments.length
+					}
+				};
 			}
 
 		} catch (error) {
@@ -480,7 +548,8 @@ if (window.faciligatorContentLoaded) {
 			isScraping = false;
 			return {
 				status: 'error',
-				error: error.message || "An unexpected error occurred"
+				error: error.message || "An unexpected error occurred",
+				assignments: []
 			};
 		} finally {
 			isScraping = false;
@@ -506,27 +575,28 @@ if (window.faciligatorContentLoaded) {
 			// Send immediate acknowledgment
 			sendResponse({ status: 'started' });
 
-			scrapeAssignments().then(result => {
-				// Send results back to background script
-				chrome.runtime.sendMessage({
-					sender: "content_canvas",
-					receiver: "background",
-					destination: "popup",
-					type: "assignments",
-					assignments: result.assignments || []
-				});
-			}).catch(error => {
-				console.error('Error during scraping:', error);
-				chrome.runtime.sendMessage({
-					sender: "content_canvas",
-					receiver: "background",
-					destination: "popup",
-					type: "error",
-					error: error.message
-				});
-			});
+			// Set a timeout to allow the message port to close properly before starting heavy work
+			setTimeout(() => {
+				// Use a higher-level promise wrapper to ensure errors are caught
+				(async () => {
+					try {
+						const result = await scrapeAssignments();
+						console.log('Assignment scraping completed, sending results:', result);
+						
+						// Send results with retry logic
+						await sendResultsWithRetry(result);
+					} catch (error) {
+						console.error('Error during scraping:', error);
+						
+						// Send error with retry logic
+						await sendErrorWithRetry(error);
+					} finally {
+						isScraping = false;
+					}
+				})();
+			}, 100); // Small delay to ensure port closure doesn't interfere
 
-			return false; // We've already sent the response
+			return false; // We've already sent the immediate response
 		}
 
 		if (request.action === 'getAssignments') {
@@ -534,17 +604,48 @@ if (window.faciligatorContentLoaded) {
 			shouldCancel = false;
 			isScraping = true;
 
-			// Execute the scraping function
-			scrapeAssignments().then(result => {
-				console.log('Assignment scraping completed:', result);
-				sendResponse(result);
-			}).catch(error => {
-				console.error('Error during assignment scraping:', error);
-				sendResponse({
-					status: 'error',
-					error: error.message || 'An unknown error occurred during scraping'
-				});
-			});
+			// Execute the scraping function with a promise to make sure we handle the async response correctly
+			(async () => {
+				try {
+					const result = await scrapeAssignments();
+					console.log('Assignment scraping completed:', result);
+					
+					try {
+						sendResponse(result);
+					} catch (responseError) {
+						console.error('Error sending response:', responseError);
+						// Try to send via message if response fails
+						chrome.runtime.sendMessage({
+							sender: "content_canvas",
+							receiver: "background",
+							destination: "popup",
+							type: "assignments",
+							courseId: result.courseId || "unknown",
+							assignments: result.assignments || []
+						});
+					}
+				} catch (error) {
+					console.error('Error during assignment scraping:', error);
+					try {
+						sendResponse({
+							status: 'error',
+							error: error.message || 'An unknown error occurred during scraping'
+						});
+					} catch (responseError) {
+						console.error('Error sending error response:', responseError);
+						// Try to send via message if response fails
+						chrome.runtime.sendMessage({
+							sender: "content_canvas",
+							receiver: "background",
+							destination: "popup",
+							type: "error",
+							error: error.message || 'An unknown error occurred during scraping'
+						});
+					}
+				} finally {
+					isScraping = false;
+				}
+			})();
 
 			return true; // Keep the message channel open for async response
 		}
@@ -568,4 +669,118 @@ if (window.faciligatorContentLoaded) {
 
 		return false; // For any other messages
 	});
+
+	// Helper function to send results with retry
+	async function sendResultsWithRetry(result, retryCount = 0, maxRetries = 3) {
+		try {
+			return await new Promise((resolve, reject) => {
+				chrome.runtime.sendMessage({
+					sender: "content_canvas",
+					receiver: "background",
+					destination: "popup",
+					type: "assignments",
+					courseId: result.courseId || "unknown",
+					assignments: result.assignments || [],
+					stats: result.stats || {}
+				}, response => {
+					if (chrome.runtime.lastError) {
+						console.error('Error sending results to background:', chrome.runtime.lastError);
+						reject(chrome.runtime.lastError);
+					} else if (response) {
+						console.log('Background acknowledged result reception:', response);
+						resolve(response);
+					} else {
+						resolve({ status: 'no_response' });
+					}
+				});
+				
+				// Set a timeout in case the message callback never fires
+				setTimeout(() => {
+					resolve({ status: 'timeout' });
+				}, 5000);
+			});
+		} catch (error) {
+			// Format error for logging and readability
+			let errorMessage;
+			if (error && typeof error === 'object') {
+				try {
+					errorMessage = JSON.stringify(error);
+				} catch (e) {
+					errorMessage = 'Unserializable error object';
+				}
+			} else {
+				errorMessage = error?.toString() || 'Unknown error';
+			}
+			
+			console.error(`Send results attempt ${retryCount + 1} failed: ${errorMessage}`);
+			
+			if (retryCount < maxRetries) {
+				console.log(`Retrying send results (${retryCount + 1}/${maxRetries})...`);
+				await new Promise(resolve => setTimeout(resolve, 1000)); // Wait before retry
+				return sendResultsWithRetry(result, retryCount + 1, maxRetries);
+			} else {
+				console.error('Failed to send results after retries');
+				// Fall back to simplified message
+				try {
+					chrome.runtime.sendMessage({
+						sender: "content_canvas",
+						type: "assignments_completed",
+						courseId: result.courseId,
+						count: result.assignments ? result.assignments.length : 0
+					});
+				} catch (e) {
+					console.error('Final fallback message also failed:', e);
+				}
+			}
+		}
+	}
+	
+	// Helper function to send error with retry
+	async function sendErrorWithRetry(error, retryCount = 0, maxRetries = 3) {
+		try {
+			return await new Promise((resolve, reject) => {
+				chrome.runtime.sendMessage({
+					sender: "content_canvas",
+					receiver: "background",
+					destination: "popup",
+					type: "error",
+					error: error.message || "An unknown error occurred"
+				}, response => {
+					if (chrome.runtime.lastError) {
+						console.error('Error sending error to background:', chrome.runtime.lastError);
+						reject(chrome.runtime.lastError);
+					} else {
+						resolve(response || { status: 'sent' });
+					}
+				});
+				
+				// Set a timeout in case the message callback never fires
+				setTimeout(() => {
+					resolve({ status: 'timeout' });
+				}, 5000);
+			});
+		} catch (msgError) {
+			// Format error for logging and readability
+			let errorMessage;
+			if (msgError && typeof msgError === 'object') {
+				try {
+					errorMessage = JSON.stringify(msgError);
+				} catch (e) {
+					errorMessage = 'Unserializable error object';
+				}
+			} else {
+				errorMessage = msgError?.toString() || 'Unknown error';
+			}
+			
+			console.error(`Send error attempt ${retryCount + 1} failed: ${errorMessage}`);
+			
+			if (retryCount < maxRetries) {
+				console.log(`Retrying send error (${retryCount + 1}/${maxRetries})...`);
+				await new Promise(resolve => setTimeout(resolve, 1000)); // Wait before retry
+				return sendErrorWithRetry(error, retryCount + 1, maxRetries);
+			} else {
+				console.error('Failed to send error after retries');
+			}
+		}
+	}
 }

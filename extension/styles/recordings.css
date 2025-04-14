@@ -1,0 +1,376 @@
+/* Recordings Container */
+.recordings-container {
+    padding: 0.5rem;
+}
+
+/* Select All Container */
+.select-all-container {
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.select-all-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-weight: 600;
+    color: #444;
+}
+
+.select-all-label input {
+    margin-right: 0.5rem;
+}
+
+/* Recordings Section */
+.recordings-section-header {
+    margin-bottom: 0.5rem;
+    padding: 0.5rem;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+}
+
+.recordings-section-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #333;
+}
+
+.recordings-course-container {
+    margin-bottom: 1.5rem;
+}
+
+/* Recording Item */
+.recording-item {
+    display: flex;
+    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    transition: box-shadow 0.2s ease;
+}
+
+.recording-item:hover {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.item-checkbox-container {
+    margin-right: 10px;
+    display: flex;
+    align-items: flex-start;
+    padding-top: 4px;
+}
+
+.recording-checkbox {
+    cursor: pointer;
+}
+
+.recording-content {
+    flex: 1;
+}
+
+.recording-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.recording-title {
+    margin: 0;
+    font-size: 15px;
+    color: #333;
+    font-weight: 600;
+}
+
+.recording-date {
+    font-size: 12px;
+    color: #666;
+}
+
+.recording-details {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-size: 13px;
+    color: #666;
+}
+
+.recording-host {
+    flex: 1;
+}
+
+.recording-url {
+    color: #0066cc;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+}
+
+.recording-url i {
+    margin-right: 4px;
+    font-size: 12px;
+}
+
+.recording-url:hover {
+    text-decoration: underline;
+}
+
+.recording-status {
+    font-size: 12px;
+    color: #777;
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.recording-status i {
+    margin-right: 5px;
+}
+
+/* Submit Container */
+.recordings-submit-container {
+    display: flex;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e0e0e0;
+    gap: 0.75rem;
+}
+
+.action-button {
+    padding: 0.6rem 1rem;
+    border: none;
+    border-radius: 4px;
+    background-color: #0066cc;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.action-button i {
+    margin-right: 6px;
+}
+
+.action-button:hover {
+    background-color: #0055aa;
+}
+
+.action-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.recordings-process-button {
+    background-color: #28a745;
+}
+
+.recordings-process-button:hover {
+    background-color: #218838;
+}
+
+/* Success and Error States */
+.success-message {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background-color: #d4edda;
+    border-radius: 4px;
+    color: #155724;
+    display: flex;
+    align-items: center;
+}
+
+.success-message i {
+    margin-right: 0.5rem;
+}
+
+.error-message {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background-color: #f8d7da;
+    border-radius: 4px;
+    color: #721c24;
+    display: flex;
+    align-items: center;
+}
+
+.error-message i {
+    margin-right: 0.5rem;
+}
+
+.batch-id {
+    font-weight: bold;
+    margin-left: 0.5rem;
+    cursor: pointer;
+}
+
+.batch-id:hover {
+    text-decoration: underline;
+}
+
+/* Status text colors */
+.text-success {
+    color: #28a745;
+}
+
+.text-danger {
+    color: #dc3545;
+}
+
+.text-warning {
+    color: #ffc107;
+}
+
+/* Transcript Summary */
+.transcript-summary {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e0e0e0;
+}
+
+.summary-box {
+    background-color: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 1rem;
+}
+
+.summary-box h4 {
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+    font-size: 16px;
+    color: #333;
+}
+
+.stats {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.stat-item {
+    flex: 1;
+    min-width: 80px;
+    margin-right: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    font-size: 13px;
+    color: #666;
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.stat-value {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+}
+
+/* Styles for item display */
+.item-container {
+    display: flex;
+    padding: 12px;
+    margin-bottom: 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    background-color: #fff;
+}
+
+.item-container:hover {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.item-checkbox-container {
+    margin-right: 12px;
+    display: flex;
+    align-items: flex-start;
+}
+
+.item-content {
+    flex: 1;
+}
+
+.item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.item-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+    color: #333;
+}
+
+.item-date {
+    font-size: 12px;
+    color: #666;
+}
+
+.item-details {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    color: #555;
+    font-size: 13px;
+}
+
+.item-url-container {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed #eee;
+}
+
+.item-url {
+    display: inline-flex;
+    align-items: center;
+    color: #0066cc;
+    text-decoration: none;
+    font-size: 13px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.item-url i {
+    margin-right: 6px;
+    font-size: 12px;
+}
+
+.item-url:hover {
+    text-decoration: underline;
+}
+
+.course-section {
+    margin-bottom: 24px;
+}
+
+.course-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #0066cc;
+}
+
+.course-header h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #0066cc;
+}
+
+.count-badge {
+    background-color: #0066cc;
+    color: white;
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 10px;
+} 

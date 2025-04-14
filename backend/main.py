@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List, Dict, Union
 import os
 from dotenv import load_dotenv
 from supabase import create_client, Client
@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 import importlib
 import logging
 import uuid
+import json
 
 # Configure logging
 logging.basicConfig(
@@ -40,10 +41,19 @@ app.add_middleware(
 # Supabase configuration
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_KEY")
 JWT_SECRET = os.getenv("JWT_SECRET")
 
 # Initialize Supabase client
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# Initialize service role client for admin operations
+try:
+    supabase_admin: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    logger.info("Supabase admin client initialized successfully")
+except Exception as e:
+    logger.warning(f"Failed to initialize Supabase admin client: {str(e)}")
+    supabase_admin = supabase  # Fallback to regular client if admin fails
 
 # Models
 class UserCreate(BaseModel):
@@ -77,6 +87,25 @@ class AssignmentSubmission(BaseModel):
     courseId: str
     assignments: list[Assignment]
     upload_batch_id: Optional[str] = None  # Batch ID to group assignments by upload session
+
+class ZoomRecording(BaseModel):
+    title: str
+    url: str
+    date: Optional[str] = None
+    host: Optional[str] = None
+    courseId: str
+
+class ZoomRecordingSubmission(BaseModel):
+    courseId: str
+    recordings: list[ZoomRecording]
+    upload_batch_id: Optional[str] = None  # Batch ID to group recordings by upload session
+
+class ZoomTranscript(BaseModel):
+    recording_id: str
+    transcript_data: List[Dict]
+    formatted_text: Optional[str] = ""
+    url: Optional[str] = None
+    segment_count: Optional[int] = None
 
 # Helper functions
 def create_access_token(data: dict, expires_delta: timedelta = None):
@@ -172,6 +201,11 @@ async def root():
     </html>
     """
     return html_content
+
+@app.get("/ping")
+async def ping():
+    """Simple ping endpoint for checking if the API is running"""
+    return {"status": "ok", "message": "API is running"}
 
 @app.post("/auth/signup", response_model=Token)
 async def signup(user: UserCreate):
@@ -440,6 +474,710 @@ async def get_assignments_by_batch(batch_id: str, current_user: dict = Depends(g
         logger.error(f"Error retrieving assignments by batch: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to retrieve assignments: {str(e)}")
 
+# ==================== ZOOM TRANSCRIPT RELATED MODELS AND ENDPOINTS ====================
+
+@app.post("/dev/sql")
+async def run_sql(sql_or_request: Union[str, Dict], current_user: dict = Depends(get_current_user)):
+    """DEVELOPMENT ONLY: Run a SQL query directly via the exec_sql RPC function"""
+    try:
+        # Handle both string SQL and request body with sql field
+        if isinstance(sql_or_request, dict):
+            sql = sql_or_request.get("sql")
+        else:
+            sql = sql_or_request  # Direct string SQL
+            
+        logger.warning(f"DEVELOPMENT: Attempting to run SQL via exec_sql RPC: {sql[:200]}...")
+        
+        # Directly try calling the exec_sql RPC function
+        sql_result = supabase.rpc("exec_sql", {"sql": sql}).execute()
+        logger.info(f"exec_sql RPC executed. Response: {sql_result}")
+        
+        # Check for errors in the Supabase response itself
+        if hasattr(sql_result, 'error') and sql_result.error:
+             logger.error(f"Supabase RPC error object: {sql_result.error}")
+             raise Exception(f"Supabase RPC Error: {sql_result.error}")
+        
+        return {
+            "status": "success",
+            "message": "SQL executed successfully via RPC",
+            "result": sql_result.data if hasattr(sql_result, 'data') else None # Return data if available
+        }
+    except Exception as e:
+        error_type = type(e).__name__
+        error_repr = repr(e)
+        logger.error(f"Failed to run SQL via RPC. Type: {error_type}, Repr: {error_repr}")
+        raise HTTPException(status_code=500, detail=f"Failed to run SQL via RPC: {error_type} - {error_repr}")
+
+@app.post("/dev/create-tables")
+async def create_tables(current_user: dict = Depends(get_current_user)):
+    """DEVELOPMENT ONLY: Create required tables if they don't exist"""
+    try:
+        logger.warning("DEVELOPMENT: Creating tables if they don't exist")
+        
+        # SQL to create the zoom_recordings table if it doesn't exist
+        create_recordings_table_sql = """
+        CREATE TABLE IF NOT EXISTS zoom_recordings (
+            id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+            user_id uuid NOT NULL,
+            course_id text NOT NULL,
+            title text NOT NULL,
+            url text NOT NULL,
+            date text,
+            host text,
+            upload_batch_id text,
+            transcript_processed boolean DEFAULT false,
+            transcript_error text,
+            created_at timestamp with time zone DEFAULT now(),
+            updated_at timestamp with time zone
+        );
+        
+        -- Ensure RLS is disabled for development
+        ALTER TABLE zoom_recordings DISABLE ROW LEVEL SECURITY;
+        
+        -- Create policy that allows all operations for the same user_id
+        DROP POLICY IF EXISTS allow_user_access ON zoom_recordings;
+        CREATE POLICY allow_user_access ON zoom_recordings
+            USING (user_id = auth.uid())
+            WITH CHECK (user_id = auth.uid());
+        """
+        
+        # SQL to create the zoom_transcripts table if it doesn't exist
+        create_transcripts_table_sql = """
+        CREATE TABLE IF NOT EXISTS zoom_transcripts (
+            id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+            recording_id uuid REFERENCES zoom_recordings(id),
+            user_id uuid NOT NULL,
+            transcript_data jsonb NOT NULL,
+            formatted_text text NOT NULL,
+            segment_count integer NOT NULL,
+            created_at timestamp with time zone DEFAULT now(),
+            updated_at timestamp with time zone
+        );
+        
+        -- Ensure RLS is disabled for development
+        ALTER TABLE zoom_transcripts DISABLE ROW LEVEL SECURITY;
+        
+        -- Create policy that allows all operations for the same user_id
+        DROP POLICY IF EXISTS allow_user_access ON zoom_transcripts;
+        CREATE POLICY allow_user_access ON zoom_transcripts
+            USING (user_id = auth.uid())
+            WITH CHECK (user_id = auth.uid());
+        """
+        
+        # Execute the SQL to create the tables
+        recordings_result = await run_sql(create_recordings_table_sql, current_user)
+        logger.info(f"Recordings table creation result: {recordings_result}")
+        
+        transcripts_result = await run_sql(create_transcripts_table_sql, current_user)
+        logger.info(f"Transcripts table creation result: {transcripts_result}")
+        
+        return {
+            "status": "success",
+            "message": "Tables created or already exist",
+            "recordings_result": recordings_result,
+            "transcripts_result": transcripts_result
+        }
+    except Exception as e:
+        logger.error(f"Failed to create tables: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create tables: {str(e)}")
+
+@app.post("/zoom/store")
+async def store_recordings(submission: ZoomRecordingSubmission, current_user: dict = Depends(get_current_user)):
+    """Store Zoom recordings information from extension"""
+    try:
+        # Get user ID from the authenticated user
+        user_id = current_user["user_id"]
+        logger.info(f"User {user_id} is attempting to store {len(submission.recordings)} recordings")
+        
+        # Generate a batch ID if not provided
+        upload_batch_id = submission.upload_batch_id
+        if not upload_batch_id:
+            upload_batch_id = str(uuid.uuid4())
+            logger.info(f"Generated new Zoom upload batch ID: {upload_batch_id}")
+        
+        # Format data for insertion
+        recordings_data = []
+        for recording in submission.recordings:
+            recordings_data.append({
+                "user_id": user_id,
+                "course_id": submission.courseId,
+                "title": recording.title,
+                "url": recording.url,
+                "date": recording.date,
+                "host": recording.host,
+                "upload_batch_id": upload_batch_id,
+                "transcript_processed": False,
+                "created_at": datetime.utcnow().isoformat()
+            })
+        
+        logger.info(f"Inserting {len(recordings_data)} recordings directly")
+        
+        # Insert the data using the standard client
+        response = supabase.table("zoom_recordings").insert(recordings_data).execute()
+        
+        if hasattr(response, 'error') and response.error:
+            logger.error(f"Supabase error: {response.error}")
+            raise HTTPException(status_code=500, detail=f"Failed to store recordings: {response.error}")
+        
+        # Get the inserted recordings with their IDs
+        inserted_recordings = response.data
+        
+        # Return success with the batch ID for client reference
+        return {
+            "status": "success", 
+            "message": f"Successfully stored {len(recordings_data)} recordings",
+            "upload_batch_id": upload_batch_id,
+            "recordings": inserted_recordings,
+            "count": len(recordings_data)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error storing recordings: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to store recordings: {str(e)}")
+
+@app.get("/zoom/recordings")
+async def get_recordings(current_user: dict = Depends(get_current_user)):
+    """Get all Zoom recordings for the current user"""
+    try:
+        # Get user ID from the authenticated user
+        user_id = current_user["user_id"]
+        
+        # Query all recordings for the user
+        response = supabase.table("zoom_recordings").select("*").eq("user_id", user_id).order("created_at", ascending=False).execute()
+        
+        if hasattr(response, 'error') and response.error:
+            logger.error(f"Supabase error: {response.error}")
+            raise HTTPException(status_code=500, detail=f"Failed to retrieve recordings: {response.error}")
+        
+        # Get the recordings from the response
+        recordings = response.data
+        
+        # Return the recordings
+        return {
+            "status": "success",
+            "message": f"Found {len(recordings)} recordings",
+            "recordings": recordings
+        }
+    
+    except Exception as e:
+        logger.error(f"Error retrieving recordings: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve recordings: {str(e)}")
+
+@app.get("/zoom/batch/{batch_id}")
+async def get_recordings_by_batch(batch_id: str, current_user: dict = Depends(get_current_user)):
+    """Get Zoom recordings by batch ID"""
+    try:
+        # Get user ID from the authenticated user
+        user_id = current_user["user_id"]
+        
+        # Query recordings by batch ID and user ID
+        response = supabase.table("zoom_recordings").select("*").eq("upload_batch_id", batch_id).eq("user_id", user_id).execute()
+        
+        if hasattr(response, 'error') and response.error:
+            logger.error(f"Supabase error: {response.error}")
+            raise HTTPException(status_code=500, detail=f"Failed to retrieve recordings: {response.error}")
+        
+        # Get the recordings from the response
+        recordings = response.data
+        
+        if not recordings:
+            return {
+                "status": "success",
+                "message": "No recordings found for this batch ID",
+                "recordings": []
+            }
+        
+        # Return the recordings
+        return {
+            "status": "success",
+            "message": f"Found {len(recordings)} recordings for batch ID {batch_id}",
+            "recordings": recordings,
+            "upload_batch_id": batch_id
+        }
+    
+    except Exception as e:
+        logger.error(f"Error retrieving recordings by batch: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve recordings: {str(e)}")
+
+@app.post("/zoom/extract-transcript")
+async def extract_transcript(recording: ZoomRecording, current_user: dict = Depends(get_current_user)):
+    """Extract transcript from a Zoom recording"""
+    try:
+        # Import here to avoid loading heavy dependencies when not needed
+        from zoom_transcript_scraper import scrape_zoom_transcript
+        
+        # Get user ID from the authenticated user
+        user_id = current_user["user_id"]
+        
+        # Query the recording to verify it exists and belongs to the user
+        recording_response = supabase.table("zoom_recordings").select("*").eq("url", recording.url).eq("user_id", user_id).execute()
+        
+        if hasattr(recording_response, 'error') and recording_response.error:
+            logger.error(f"Supabase error: {recording_response.error}")
+            raise HTTPException(status_code=500, detail=f"Failed to verify recording: {recording_response.error}")
+        
+        recordings = recording_response.data
+        
+        if not recordings:
+            raise HTTPException(status_code=404, detail="Recording not found or does not belong to the current user")
+        
+        recording_id = recordings[0]["id"]
+        
+        # Extract transcript from Zoom recording
+        logger.info(f"Extracting transcript from URL: {recording.url}")
+        result = scrape_zoom_transcript(recording.url)
+        
+        if not result["success"]:
+            logger.error(f"Failed to extract transcript: {result.get('error', 'Unknown error')}")
+            
+            # Update the recording to mark it as processed with error
+            update_response = supabase.table("zoom_recordings").update({
+                "transcript_processed": True,
+                "transcript_error": result.get("error", "Unknown error"),
+                "updated_at": datetime.utcnow().isoformat()
+            }).eq("id", recording_id).execute()
+            
+            raise HTTPException(status_code=500, detail=f"Failed to extract transcript: {result.get('error', 'Unknown error')}")
+        
+        # Store the transcript in the database - MINIMAL DEBUG VERSION
+        transcript_data = {
+            "recording_id": recording_id,
+            "user_id": user_id,
+            # "transcript_data": transcript.transcript_data, # DEBUG: Removed
+            # "formatted_text": transcript.formatted_text, # DEBUG: Removed
+            # "segment_count": len(transcript.transcript_data), # DEBUG: Removed
+            "created_at": datetime.utcnow().isoformat()
+        }
+        
+        logger.info(f"DEBUG: Inserting MINIMAL transcript data: {transcript_data}")
+        transcript_response = supabase.table("zoom_transcripts").insert(transcript_data).execute()
+        
+        # Log the full response from Supabase insert
+        logger.info(f"Supabase insert transcript response object (minimal): {transcript_response}")
+        
+        if hasattr(transcript_response, 'error') and transcript_response.error:
+            logger.error(f"Supabase error storing transcript: {transcript_response.error}")
+            raise HTTPException(status_code=500, detail=f"Failed to store transcript: {transcript_response.error}")
+        
+        logger.info(f"Transcript stored successfully (based on Supabase response), updating recording status")
+        
+        # Update the recording to mark it as processed
+        update_response = supabase.table("zoom_recordings").update({
+            "transcript_processed": True,
+            "transcript_error": None,
+            "updated_at": datetime.utcnow().isoformat()
+        }).eq("id", recording_id).execute()
+        
+        # Log the full response from Supabase update
+        logger.info(f"Supabase update recording response object: {update_response}")
+        
+        # Return the transcript data
+        return {
+            "status": "success",
+            "message": f"Successfully extracted transcript with {result['segment_count']} segments",
+            "recording_id": recording_id,
+            "transcript": result
+        }
+    
+    except HTTPException as e:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        logger.error(f"Error extracting transcript: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to extract transcript: {str(e)}")
+
+@app.post("/zoom/batch-extract")
+async def batch_extract_transcripts(submission: ZoomRecordingSubmission, current_user: dict = Depends(get_current_user)):
+    """Extract transcripts from multiple Zoom recordings"""
+    try:
+        # Import here to avoid loading heavy dependencies when not needed
+        from zoom_transcript_scraper import scrape_zoom_transcript
+        
+        # Get user ID from the authenticated user
+        user_id = current_user["user_id"]
+        
+        results = []
+        for recording in submission.recordings:
+            try:
+                # Query the recording to verify it exists and belongs to the user
+                recording_response = supabase.table("zoom_recordings").select("*").eq("url", recording.url).eq("user_id", user_id).execute()
+                
+                if hasattr(recording_response, 'error') and recording_response.error:
+                    results.append({
+                        "url": recording.url,
+                        "success": False,
+                        "error": f"Database error: {recording_response.error}"
+                    })
+                    continue
+                
+                recordings = recording_response.data
+                
+                if not recordings:
+                    results.append({
+                        "url": recording.url,
+                        "success": False,
+                        "error": "Recording not found or does not belong to the current user"
+                    })
+                    continue
+                
+                recording_id = recordings[0]["id"]
+                
+                # Extract transcript from Zoom recording
+                logger.info(f"Extracting transcript from URL: {recording.url}")
+                result = scrape_zoom_transcript(recording.url)
+                
+                if not result["success"]:
+                    # Update the recording to mark it as processed with error
+                    update_response = supabase.table("zoom_recordings").update({
+                        "transcript_processed": True,
+                        "transcript_error": result.get("error", "Unknown error"),
+                        "updated_at": datetime.utcnow().isoformat()
+                    }).eq("id", recording_id).execute()
+                    
+                    results.append({
+                        "url": recording.url,
+                        "recording_id": recording_id,
+                        "success": False,
+                        "error": result.get("error", "Unknown error")
+                    })
+                    continue
+                
+                # Store the transcript in the database
+                transcript_data = {
+                    "recording_id": recording_id,
+                    "user_id": user_id,
+                    "transcript_data": result["transcript_data"],
+                    "formatted_text": result["formatted_text"],
+                    "segment_count": result["segment_count"],
+                    "created_at": datetime.utcnow().isoformat()
+                }
+                
+                logger.info(f"Inserting transcript with {len(result['transcript_data'])} segments")
+                transcript_response = supabase.table("zoom_transcripts").insert(transcript_data).execute()
+                
+                if hasattr(transcript_response, 'error') and transcript_response.error:
+                    results.append({
+                        "url": recording.url,
+                        "recording_id": recording_id,
+                        "success": False,
+                        "error": f"Failed to store transcript: {transcript_response.error}"
+                    })
+                    continue
+                
+                # Update the recording to mark it as processed
+                update_response = supabase.table("zoom_recordings").update({
+                    "transcript_processed": True,
+                    "transcript_error": None,
+                    "updated_at": datetime.utcnow().isoformat()
+                }).eq("id", recording_id).execute()
+                
+                # Add successful result
+                results.append({
+                    "url": recording.url,
+                    "recording_id": recording_id,
+                    "success": True,
+                    "segment_count": result["segment_count"]
+                })
+                
+            except Exception as e:
+                logger.error(f"Error processing recording {recording.url}: {str(e)}")
+                results.append({
+                    "url": recording.url,
+                    "success": False,
+                    "error": str(e)
+                })
+        
+        # Count successes and failures
+        successes = sum(1 for r in results if r["success"])
+        failures = len(results) - successes
+        
+        # Return the results
+        return {
+            "status": "success",
+            "message": f"Processed {len(results)} recordings: {successes} successful, {failures} failed",
+            "results": results
+        }
+    
+    except Exception as e:
+        logger.error(f"Error in batch transcript extraction: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to process batch: {str(e)}")
+
+@app.get("/zoom/transcript/{recording_id}")
+async def get_transcript(recording_id: str, current_user: dict = Depends(get_current_user)):
+    """Get transcript for a specific recording"""
+    try:
+        # Get user ID from the authenticated user
+        user_id = current_user["user_id"]
+        
+        # Query the transcript
+        response = supabase.table("zoom_transcripts").select("*").eq("recording_id", recording_id).eq("user_id", user_id).execute()
+        
+        if hasattr(response, 'error') and response.error:
+            logger.error(f"Supabase error: {response.error}")
+            raise HTTPException(status_code=500, detail=f"Failed to retrieve transcript: {response.error}")
+        
+        transcripts = response.data
+        
+        if not transcripts:
+            # Check if the recording exists but has no transcript
+            recording_response = supabase.table("zoom_recordings").select("*").eq("id", recording_id).eq("user_id", user_id).execute()
+            
+            if hasattr(recording_response, 'error') and recording_response.error:
+                logger.error(f"Supabase error: {recording_response.error}")
+                raise HTTPException(status_code=500, detail=f"Failed to check recording: {recording_response.error}")
+            
+            recordings = recording_response.data
+            
+            if not recordings:
+                raise HTTPException(status_code=404, detail="Recording not found or does not belong to the current user")
+            
+            return {
+                "status": "not_found",
+                "message": "No transcript found for this recording",
+                "recording": recordings[0],
+                "transcript": None
+            }
+        
+        # Return the transcript
+        return {
+            "status": "success",
+            "message": "Transcript found",
+            "transcript": transcripts[0]
+        }
+    
+    except HTTPException as e:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving transcript: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve transcript: {str(e)}")
+
+@app.post("/zoom/store-transcript")
+async def store_transcript(transcript: ZoomTranscript, current_user: dict = Depends(get_current_user)):
+    """Store a transcript for a Zoom recording"""
+    try:
+        # Get user ID from the authenticated user
+        user_id = current_user["user_id"]
+        logger.info(f"User {user_id} storing transcript for recording {transcript.recording_id}")
+        
+        # Log detailed information about the received transcript data
+        transcript_data_type = type(transcript.transcript_data).__name__
+        transcript_data_length = len(transcript.transcript_data) if transcript.transcript_data else 0
+        logger.info(f"Received transcript data: type={transcript_data_type}, length={transcript_data_length}")
+        
+        # Validate transcript data
+        if not transcript.transcript_data or not isinstance(transcript.transcript_data, list) or len(transcript.transcript_data) == 0:
+            logger.warning(f"Invalid transcript_data received. Type: {transcript_data_type}, Length: {transcript_data_length}")
+            raise HTTPException(status_code=400, detail="Invalid transcript data: must be a non-empty list")
+            
+        # Check the first item structure
+        if transcript_data_length > 0:
+            first_item = transcript.transcript_data[0]
+            logger.info(f"First transcript item: {first_item}")
+            
+            if not isinstance(first_item, dict):
+                logger.warning(f"Invalid transcript item format. Expected dict, got {type(first_item).__name__}")
+                raise HTTPException(status_code=400, detail="Invalid transcript data format: items must be dictionaries")
+            
+            # Check if it has the expected keys
+            required_keys = ["text", "timestamp"]
+            missing_keys = [key for key in required_keys if key not in first_item]
+            if missing_keys:
+                logger.warning(f"Transcript item missing required keys: {missing_keys}")
+        
+        # Ensure the recording exists and belongs to the user
+        recording_response = supabase.table("zoom_recordings").select("*").eq("id", transcript.recording_id).eq("user_id", user_id).execute()
+        if hasattr(recording_response, 'error') and recording_response.error:
+            logger.error(f"Supabase error verifying recording: {recording_response.error}")
+            raise HTTPException(status_code=500, detail=f"Failed to verify recording: {recording_response.error}")
+        
+        recordings = recording_response.data
+        if not recordings:
+            logger.warning(f"Recording {transcript.recording_id} not found or does not belong to user {user_id}")
+            raise HTTPException(status_code=404, detail="Recording not found or does not belong to the current user")
+        
+        recording_id = recordings[0]["id"]
+        logger.info(f"Verified recording with ID {recording_id}")
+        
+        # Convert nested dicts in transcript_data to ensure JSON compatibility
+        cleaned_transcript_data = []
+        for item in transcript.transcript_data:
+            if isinstance(item, dict):
+                # Convert any non-serializable values to strings
+                cleaned_item = {}
+                for k, v in item.items():
+                    if isinstance(v, (str, int, float, bool, type(None))):
+                        cleaned_item[k] = v
+                    else:
+                        cleaned_item[k] = str(v)
+                cleaned_transcript_data.append(cleaned_item)
+            else:
+                # If item is not a dict, convert to a dict with a text field
+                cleaned_transcript_data.append({"text": str(item)})
+        
+        # Calculate segment count
+        segment_count = transcript.segment_count if transcript.segment_count is not None else len(cleaned_transcript_data)
+        logger.info(f"Final segment count: {segment_count}")
+        
+        # Log sanitized data for debugging
+        logger.info(f"Prepared cleaned transcript data with {len(cleaned_transcript_data)} items")
+        if cleaned_transcript_data:
+            logger.info(f"Sample items (first 2): {cleaned_transcript_data[:2]}")
+        
+        # Prepare final data for insert
+        transcript_data_to_store = {
+            "recording_id": recording_id,
+            "user_id": user_id,
+            "transcript_data": cleaned_transcript_data,
+            "formatted_text": transcript.formatted_text or "",
+            "segment_count": segment_count,
+            "created_at": datetime.utcnow().isoformat()
+        }
+        
+        # Insert using Supabase client
+        logger.info(f"Executing Supabase insert for transcript with {segment_count} segments")
+        transcript_response = supabase.table("zoom_transcripts").insert(transcript_data_to_store).execute()
+        
+        if hasattr(transcript_response, 'error') and transcript_response.error:
+            logger.error(f"Supabase error storing transcript: {transcript_response.error}")
+            raise HTTPException(status_code=500, detail=f"Failed to store transcript: {transcript_response.error}")
+        
+        # Log response for debugging
+        if hasattr(transcript_response, 'data') and transcript_response.data:
+            logger.info(f"Transcript insert successful, got ID: {transcript_response.data[0].get('id')}")
+        else:
+            logger.warning("Transcript insert successful but no data returned")
+        
+        # Update the recording to mark it as processed
+        update_response = supabase.table("zoom_recordings").update({
+            "transcript_processed": True,
+            "transcript_error": None,
+            "updated_at": datetime.utcnow().isoformat()
+        }).eq("id", recording_id).execute()
+        logger.info(f"Updated recording {recording_id} status to processed")
+        
+        # Return success response
+        return {
+            "status": "success",
+            "message": "Transcript stored successfully",
+            "recording_id": recording_id,
+            "segment_count": segment_count
+        }
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        error_type = type(e).__name__
+        error_repr = repr(e)
+        logger.error(f"Error storing transcript. Type: {error_type}, Repr: {error_repr}")
+        raise HTTPException(status_code=500, detail=f"Failed to store transcript: {error_type} - {error_repr}")
+
+# ==================== END ZOOM TRANSCRIPT RELATED MODELS AND ENDPOINTS ====================
+
+# ==================== DEVELOPMENT ENDPOINTS ====================
+
+@app.post("/dev/rls/disable/{table}")
+async def disable_rls_dev(table: str, current_user: dict = Depends(get_current_user)):
+    """DEVELOPMENT ONLY: Disable RLS for a table to allow for testing"""
+    # This endpoint should be disabled in production
+    if os.getenv("ENVIRONMENT", "development") == "production":
+        raise HTTPException(status_code=403, detail="This endpoint is disabled in production")
+    
+    try:
+        logger.warning(f"DEVELOPMENT: Disabling RLS for table {table}")
+        
+        # Execute raw SQL to disable RLS
+        sql = f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY;"
+        
+        response = supabase_admin.rpc(
+            "disable_rls", 
+            {"table_name": table}
+        ).execute()
+        
+        return {
+            "status": "success",
+            "message": f"RLS disabled for table {table}",
+            "response": response
+        }
+    except Exception as e:
+        logger.error(f"Failed to disable RLS: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to disable RLS: {str(e)}")
+
+@app.post("/dev/rls/enable/{table}")
+async def enable_rls_dev(table: str, current_user: dict = Depends(get_current_user)):
+    """DEVELOPMENT ONLY: Enable RLS for a table after testing"""
+    # This endpoint should be disabled in production
+    if os.getenv("ENVIRONMENT", "development") == "production":
+        raise HTTPException(status_code=403, detail="This endpoint is disabled in production")
+    
+    try:
+        logger.warning(f"DEVELOPMENT: Enabling RLS for table {table}")
+        
+        # Execute raw SQL to enable RLS
+        sql = f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;"
+        
+        response = supabase_admin.rpc(
+            "enable_rls", 
+            {"table_name": table}
+        ).execute()
+        
+        return {
+            "status": "success",
+            "message": f"RLS enabled for table {table}",
+            "response": response
+        }
+    except Exception as e:
+        logger.error(f"Failed to enable RLS: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to enable RLS: {str(e)}")
+
+# Add a development endpoint to get the raw transcript data by ID
+@app.get("/dev/transcript/{transcript_id}")
+async def get_raw_transcript(transcript_id: str, current_user: dict = Depends(get_current_user)):
+    """DEVELOPMENT ONLY: Get the raw transcript data by ID for debugging"""
+    # This endpoint should be disabled in production
+    if os.getenv("ENVIRONMENT", "development") == "production":
+        raise HTTPException(status_code=403, detail="This endpoint is disabled in production")
+    
+    try:
+        logger.warning(f"DEVELOPMENT: Getting raw transcript data for transcript ID {transcript_id}")
+        
+        # Query the transcript
+        response = supabase.table("zoom_transcripts").select("*").eq("id", transcript_id).execute()
+        
+        if hasattr(response, 'error') and response.error:
+            logger.error(f"Supabase error: {response.error}")
+            raise HTTPException(status_code=500, detail=f"Failed to retrieve transcript: {response.error}")
+        
+        transcripts = response.data
+        
+        if not transcripts:
+            raise HTTPException(status_code=404, detail="Transcript not found")
+        
+        transcript = transcripts[0]
+        
+        # Check if transcript_data exists and is not empty
+        has_data = transcript.get("transcript_data") is not None
+        data_length = len(transcript.get("transcript_data", [])) if has_data else 0
+        logger.info(f"Transcript {transcript_id} has data: {has_data}, data length: {data_length}")
+        
+        if data_length > 0:
+            # Log sample of the data
+            sample = transcript["transcript_data"][:2] if data_length > 0 else []
+            logger.info(f"Sample of transcript data: {sample}")
+        
+        return {
+            "status": "success",
+            "transcript": transcript,
+            "has_data": has_data,
+            "data_length": data_length
+        }
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Error retrieving raw transcript: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve raw transcript: {str(e)}")
+
+# ==================== END DEVELOPMENT ENDPOINTS ====================
+
 # Import and include the render module
 if importlib.util.find_spec("render"):
     import render
@@ -453,4 +1191,17 @@ if importlib.util.find_spec("confirmation"):
 # Run the app with uvicorn
 if __name__ == "__main__":
     import uvicorn
+    
+    # Run startup SQL scripts
+    try:
+        with open("startup_scripts.sql", "r") as f:
+            startup_sql = f.read()
+        
+        logger.info("Running startup SQL scripts...")
+        # Use the supabase_admin client to run the SQL directly
+        result = supabase_admin.rpc("exec_sql", {"sql": startup_sql}).execute()
+        logger.info(f"Startup SQL result: {result}")
+    except Exception as e:
+        logger.error(f"Error running startup SQL scripts: {e}")
+    
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True) 
