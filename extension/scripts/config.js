@@ -97,10 +97,38 @@ const ApiUtils = {
                 return { error: 'Authentication expired. Please log in again.' };
             }
             
-            const result = await response.json();
+            // Parse the response JSON
+            let result;
+            try {
+                result = await response.json();
+            } catch (e) {
+                // If JSON parsing fails, create a simple object with the status text
+                result = { detail: response.statusText || 'Unknown error' };
+            }
             
+            // Check if response is not ok (not in 200-299 range)
             if (!response.ok) {
-                return { error: result.detail || 'An error occurred' };
+                // For validation errors (422 Unprocessable Entity), format them nicely
+                if (response.status === 422) {
+                    console.error('Validation error response:', result);
+                    
+                    // Format the validation error details
+                    if (result.detail && Array.isArray(result.detail)) {
+                        const formattedErrors = result.detail.map((err, i) => {
+                            if (typeof err === 'object') {
+                                return `Validation error ${i+1}: ${JSON.stringify(err)}`;
+                            }
+                            return `Validation error ${i+1}: ${err}`;
+                        }).join('. ');
+                        
+                        return { error: formattedErrors };
+                    }
+                }
+                
+                // For other error types
+                return { 
+                    error: result.detail || result.message || `Error ${response.status}: ${response.statusText}` 
+                };
             }
             
             return result;
@@ -262,6 +290,174 @@ const ApiUtils = {
         } catch (error) {
             console.error('Error getting user info:', error);
             return null;
+        }
+    },
+    
+    // Store Zoom recordings in database
+    storeZoomRecordings: async (data) => {
+        try {
+            console.log('Submitting Zoom recordings:', data);
+            
+            // Call the API endpoint to store recordings
+            const result = await ApiUtils.authenticatedRequest('/zoom/store', 'POST', data);
+            
+            if (result.error) {
+                console.error('Error storing zoom recordings:', result.error);
+                return { error: result.error };
+            }
+            
+            return { 
+                status: 'success',
+                message: result.message || 'Recordings submitted successfully',
+                count: data.recordings.length,
+                batch_id: data.upload_batch_id
+            };
+        } catch (error) {
+            console.error('Error in storeZoomRecordings:', error);
+            return { error: error.message || 'Failed to store recordings' };
+        }
+    },
+    
+    // Store assignments in database
+    storeAssignments: async (data) => {
+        try {
+            console.log('Submitting assignments:', data);
+            
+            // Basic validation to prevent common issues
+            if (!data || !data.assignments || !Array.isArray(data.assignments) || data.assignments.length === 0) {
+                return { error: 'No valid assignments to submit' };
+            }
+            
+            // Ensure required fields are present for all assignments
+            for (const [index, assignment] of data.assignments.entries()) {
+                if (!assignment.title || !assignment.url) {
+                    return { error: `Assignment at position ${index} must have a title and URL` };
+                }
+                
+                // Ensure points is a valid number
+                if (assignment.points && isNaN(parseFloat(assignment.points))) {
+                    return { error: `Assignment "${assignment.title}" has invalid points value` };
+                }
+            }
+            
+            // Call the API endpoint to store assignments
+            const result = await ApiUtils.authenticatedRequest('/assignments/store', 'POST', data);
+            
+            if (result.error) {
+                // Format error message properly
+                let errorMessage = result.error;
+                
+                // If the error is an object, convert it to a string
+                if (typeof errorMessage === 'object') {
+                    try {
+                        // Check for validation errors (common format for 422 responses)
+                        if (errorMessage.detail && Array.isArray(errorMessage.detail)) {
+                            // Format validation errors nicely
+                            const validationErrors = errorMessage.detail.map((err, i) => 
+                                `Error ${i+1}: ${JSON.stringify(err)}`
+                            ).join('; ');
+                            errorMessage = `Validation errors: ${validationErrors}`;
+                        } else {
+                            // Just stringify the whole object
+                            errorMessage = JSON.stringify(errorMessage);
+                        }
+                    } catch (e) {
+                        errorMessage = 'Invalid error format';
+                    }
+                }
+                
+                console.error('Error storing assignments:', errorMessage);
+                return { error: errorMessage };
+            }
+            
+            console.log('Successfully stored assignments:', result);
+            return { 
+                status: 'success',
+                message: result.message || 'Assignments submitted successfully',
+                count: data.assignments.length,
+                batch_id: data.upload_batch_id
+            };
+        } catch (error) {
+            // Format the caught error properly
+            let errorMessage = error.message || 'Failed to store assignments';
+            
+            // For network or other errors that might be objects
+            if (typeof error === 'object' && !(error instanceof Error)) {
+                try {
+                    errorMessage = JSON.stringify(error);
+                } catch (e) {
+                    errorMessage = 'Unknown error object';
+                }
+            }
+            
+            console.error('Error in storeAssignments:', errorMessage);
+            return { error: errorMessage };
+        }
+    },
+    
+    // Extract transcript from Zoom recording using frontend scraping
+    extractZoomTranscript: async (url) => {
+        try {
+            console.log('Extracting transcript from URL:', url);
+            
+            return new Promise((resolve) => {
+                chrome.runtime.sendMessage({
+                    action: 'extractZoomTranscript',
+                    url: url
+                }, (response) => {
+                    console.log('Transcript extraction response:', response);
+                    
+                    if (!response || response.error) {
+                        resolve({ 
+                            success: false, 
+                            error: response?.error || 'Failed to extract transcript' 
+                        });
+                        return;
+                    }
+                    
+                    resolve({
+                        success: true,
+                        transcript_data: response.transcript_data,
+                        formatted_text: response.formatted_text,
+                        segment_count: response.segment_count || 0
+                    });
+                });
+            });
+        } catch (error) {
+            console.error('Error in extractZoomTranscript:', error);
+            return { 
+                success: false, 
+                error: error.message || 'Failed to extract transcript' 
+            };
+        }
+    },
+    
+    // Store Zoom transcript in the database
+    storeZoomTranscript: async (recordingId, transcriptData) => {
+        try {
+            console.log('Storing transcript for recording ID:', recordingId);
+            
+            // Call the API endpoint to store the transcript
+            const result = await ApiUtils.authenticatedRequest('/zoom/store-transcript', 'POST', {
+                recording_id: recordingId,
+                transcript_data: transcriptData.transcript_data,
+                formatted_text: transcriptData.formatted_text || "",
+                segment_count: transcriptData.segment_count || transcriptData.transcript_data?.length || 0
+            });
+            
+            if (result.error) {
+                console.error('Error storing transcript:', result.error);
+                return { error: result.error };
+            }
+            
+            return { 
+                success: true,
+                message: 'Transcript stored successfully',
+                recording_id: recordingId
+            };
+        } catch (error) {
+            console.error('Error in storeZoomTranscript:', error);
+            return { error: error.message || 'Failed to store transcript' };
         }
     }
 };

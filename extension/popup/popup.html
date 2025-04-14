@@ -6,12 +6,170 @@
     <title>FaciliGator</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" type="text/css" href="popup.css">
+    <!-- Ensure recordings CSS is also loaded -->
+    <link rel="stylesheet" type="text/css" href="../styles/recordings.css">
+    <style>
+        /* Critical styles to ensure UI works even if CSS loading fails */
+        .items-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .items-summary {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f0f4ff;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+        
+        .summary-info {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+            color: #444;
+        }
+        
+        .btn-select-all {
+            background: #1a73e8;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .item-card-container {
+            display: flex;
+            gap: 10px;
+            padding: 12px;
+            background: white;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .item-select {
+            display: flex;
+            align-items: flex-start;
+            padding-top: 5px;
+        }
+        
+        .item-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .checkbox-label {
+            margin-left: 5px;
+        }
+        
+        .item-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        
+        .item-title {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        
+        .item-title a {
+            color: #1a73e8;
+            text-decoration: none;
+        }
+        
+        .item-status {
+            font-size: 12px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            background: #e6f4ea;
+            color: #137333;
+        }
+        
+        .item-status.not-started {
+            background: #fff8e6;
+            color: #b06000;
+        }
+        
+        .item-status.late, .item-status.missing {
+            background: #fce8e6;
+            color: #c5221f;
+        }
+        
+        .item-details {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 5px;
+        }
+        
+        .item-detail {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 13px;
+            color: #555;
+        }
+        
+        /* Assignment specific styles */
+        .badge {
+            font-size: 12px;
+            background: #e8f0fe;
+            color: #1a73e8;
+            padding: 3px 8px;
+            border-radius: 12px;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 40px 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .no-results .icon-container {
+            font-size: 48px;
+            color: #dadce0;
+            margin-bottom: 15px;
+        }
+        
+        .no-results p {
+            color: #5f6368;
+            font-size: 16px;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
         <header class="header">
             <h1><i class="fas fa-graduation-cap"></i> FaciliGator</h1>
             <div class="user-controls">
+                <span class="user-name" id="user-name"></span>
                 <button id="logoutButton" class="logout-button">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </button>
@@ -44,28 +202,60 @@
             </div>
         </div>
 
+        <!-- Loading Spinner -->
+        <div id="loading-spinner" class="loading" style="display: none;">
+            <div class="spinner"></div>
+        </div>
+
         <!-- Progress Container -->
-        <div class="progress-container" style="display: none;">
+        <div id="progress-container" class="progress-container" style="display: none;">
             <div class="progress-header">
-                <span class="progress-message"></span>
-                <span class="progress-detail"></span>
+                <span class="progress-message" id="progress-message"></span>
+                <span class="progress-detail" id="progress-detail"></span>
             </div>
             <div class="progress-bar">
-                <div class="progress-bar-fill"></div>
+                <div class="progress-bar-fill" id="progress-bar-fill"></div>
             </div>
-            <div class="progress-numbers"></div>
+            <div class="progress-numbers" id="progress-numbers"></div>
             <button id="stopButton" class="action-button stop-button" style="display: none;">
                 <i class="fas fa-stop"></i> Stop
             </button>
         </div>
 
-        <!-- Results Container -->
-        <div id="results-container" class="results-container"></div>
+        <!-- Status Container -->
+        <div id="status-container" class="status-container" style="display: none;">
+            <div class="status-message" id="status-message"></div>
+            <div class="status-icons">
+                <i id="success-icon" class="fas fa-check-circle status-icon" style="display: none;"></i>
+                <i id="error-icon" class="fas fa-times-circle status-icon" style="display: none;"></i>
+                <div id="loading-icon" class="loading status-icon" style="display: none;">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
 
-        <!-- Stop Button -->
-        <button id="stopButton" class="action-button stop-button" style="display: none;">
-            <i class="fas fa-stop"></i> Stop Scraping
-        </button>
+        <!-- Results Container -->
+        <div id="results-container" class="results-container" style="display: none;">
+            <!-- Assignments list will be added here -->
+            <div id="assignments-list" class="assignments-list"></div>
+        </div>
+
+        <!-- Recordings Container -->
+        <div id="recordings-container" class="recordings-container" style="display: none;">
+            <div class="recordings-header">
+                <h2><i class="fas fa-video"></i> Zoom Recordings</h2>
+                <div class="recordings-actions">
+                    <label id="select-all-recordings-label" class="select-all-label" style="display: none;">
+                        <input type="checkbox" id="select-all-recordings"> Select All
+                    </label>
+                    <button id="upload-recordings-button" class="action-button" style="display: none;">
+                        <i class="fas fa-upload"></i> Upload Selected
+                    </button>
+                </div>
+            </div>
+            <div id="recordings-list" class="recordings-list"></div>
+            <div id="recordings-status" class="recordings-status"></div>
+        </div>
 
         <footer class="footer">
             <a href="mailto:kovidhgandreti@gmail.com?subject=FaciliGator%20Help%20Needed" class="help-link">

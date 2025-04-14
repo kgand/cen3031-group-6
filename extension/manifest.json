@@ -22,7 +22,34 @@
         "https://*.instructure.com/conversations*"
       ],
       "js": ["scripts/recording-scraper.js"],
+      "css": ["styles/recordings.css"],
       "run_at": "document_end"
+    },
+    {
+      "matches": [
+        "*://*.zoom.us/rec/share*",
+        "*://*.zoom.us/recording/detail*",
+        "https://*.zoom.us/rec/share*",
+        "https://*.zoom.us/recording/detail*"
+      ],
+      "js": ["scripts/transcript-scraper.js"],
+      "run_at": "document_end"
+    }
+  ],
+  
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "scripts/transcript-scraper.js",
+        "styles/recordings.css",
+        "scripts/config.js"
+      ],
+      "matches": [
+        "*://*.zoom.us/*",
+        "https://*.zoom.us/*",
+        "*://*.instructure.com/*",
+        "https://*.instructure.com/*"
+      ]
     }
   ],
 
@@ -30,7 +57,8 @@
     "tabs",
     "activeTab",
     "scripting",
-    "storage"
+    "storage",
+    "webNavigation"
   ],
 
   "host_permissions": [
