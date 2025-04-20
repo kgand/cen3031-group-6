@@ -918,6 +918,279 @@ async def test_full_pipeline(document_id: str, query: str = "Summarize the main 
         results["error"] = f"Full pipeline failed: {str(e)}"
         return results
 
+@app.post("/educational/notecards")
+async def generate_notecards(request: Dict[str, Any]):
+    """
+    Generate high-quality educational notecards from content
+    
+    This endpoint specializes in creating notecards that focus on actual
+    educational concepts and topics from lecture or assignment content.
+    """
+    try:
+        content = request.get("content", "")
+        num_cards = request.get("num_cards", 5)
+        
+        if not content:
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "error": "Content is required"}
+            )
+            
+        # Create a specialized prompt for educational notecards
+        prompt = f"""
+        Create {num_cards} high-quality educational flashcards based on the following content.
+        
+        CRITICAL INSTRUCTIONS:
+        - First perform a careful ANALYSIS of the content to identify the SPECIFIC ACADEMIC TOPICS being taught
+        - Extract the SPECIFIC SUBJECT MATTER and KEY CONCEPTS that represent the core educational content
+        - Determine the 3-5 most important topics or concepts covered in this content
+        - Focus EXCLUSIVELY on these specific subject matter topics when creating flashcards
+        - If the content seems to contain irrelevant text or artifacts, IGNORE those completely
+        - Your flashcards should represent the ACTUAL EDUCATIONAL CONCEPTS in the domain being taught
+        - If you're unsure what the main topics are, focus on technical terms, definitions, and formulas you can identify
+        
+        PROCESS:
+        1. Read and analyze the entire content to identify the specific academic subject and topics
+        2. List the 3-5 primary educational concepts or topics being taught
+        3. Create flashcards ONLY about these specific concepts (not about the lecture itself)
+        4. If you can't identify clear topics, default to general concepts in the apparent subject domain
+        
+        The flashcards should:
+        - Cover SPECIFIC technical concepts, theories, methodologies, or frameworks presented
+        - Include precise definitions, examples, and explanations from the domain
+        - Be written as proper educational material that would appear in a textbook
+        - Contain academically accurate information about the subject matter
+        
+        For each flashcard:
+        - Front: Ask a clear, focused question about a SPECIFIC academic concept identified in the content
+        - Back: Provide a complete, well-structured explanation that would match what appears in a textbook
+        
+        Example of BAD flashcard (DO NOT create like this):
+        FRONT: Define or explain the concept of here is a particular absence
+        BACK: If there is a particular absence, there will be penalty for that.
+        
+        Example of GOOD flashcard:
+        FRONT: What are the key characteristics of microservices architecture?
+        BACK: Microservices architecture is characterized by: 1) Small, independent services focused on single responsibilities, 2) Loose coupling between services, 3) Independent deployment capabilities, and 4) Service-specific databases and UI management code.
+        
+        Content: {content}
+        
+        Format each flashcard as:
+        FRONT: [specific educational question about a key concept]
+        BACK: [complete, textbook-quality explanation of the concept]
+        """
+            
+        # Process the document
+        rag_system = RAGSystem()
+        result = rag_system.process_document(content, prompt)
+        
+        if result["success"]:
+            # Parse the generated flashcards
+            generated_text = result["response"]
+            card_blocks = generated_text.split("FRONT:")
+            
+            # Skip the first element if it's empty (usually is)
+            if card_blocks and not card_blocks[0].strip():
+                card_blocks = card_blocks[1:]
+            
+            cards = []
+            for i, block in enumerate(card_blocks[:num_cards]):
+                # Split block into front and back
+                parts = block.split("BACK:")
+                
+                if len(parts) == 2:
+                    front = parts[0].strip()
+                    back = parts[1].strip()
+                    
+                    # Clean up any remaining sections
+                    if "FRONT:" in back:
+                        back = back.split("FRONT:")[0].strip()
+                        
+                    cards.append({
+                        "id": f"card_{i}",
+                        "front": front,
+                        "back": back
+                    })
+            
+            return {
+                "success": True,
+                "cards": cards,
+                "processing_time": result["processing_time"]
+            }
+        else:
+            return JSONResponse(
+                status_code=500,
+                content={"success": False, "error": result["error"]}
+            )
+            
+    except Exception as e:
+        logger.error(f"Error generating notecards: {e}")
+        logger.debug(traceback.format_exc())
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": str(e)}
+        )
+
+@app.post("/educational/quiz")
+async def generate_quiz(request: Dict[str, Any]):
+    """
+    Generate high-quality educational quiz questions from content
+    
+    This endpoint specializes in creating quiz questions that focus on actual
+    educational concepts and topics from lecture or assignment content.
+    """
+    try:
+        content = request.get("content", "")
+        num_questions = request.get("num_questions", 5)
+        difficulty = request.get("difficulty", "medium").lower()
+        
+        if not content:
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "error": "Content is required"}
+            )
+        
+        # Validate difficulty
+        if difficulty not in ["easy", "medium", "hard"]:
+            difficulty = "medium"
+        
+        # Prepare difficulty description
+        difficulty_desc = ""
+        if difficulty == "easy":
+            difficulty_desc = "These should be basic, factual questions testing fundamental understanding."
+        elif difficulty == "medium":
+            difficulty_desc = "These should be moderate difficulty questions requiring application of concepts."
+        else:  # hard
+            difficulty_desc = "These should be challenging questions requiring deep analysis and synthesis of multiple concepts."
+            
+        # Create a comprehensive prompt for quiz generation
+        prompt = f"""
+        Create {num_questions} high-quality multiple-choice quiz questions based on the educational concepts in the following content.
+        Difficulty level: {difficulty.upper()}. {difficulty_desc}
+        
+        CRITICAL INSTRUCTIONS:
+        - First perform a careful ANALYSIS of the content to identify the SPECIFIC ACADEMIC TOPICS being taught
+        - Extract the SPECIFIC SUBJECT MATTER and KEY CONCEPTS that represent the core educational content
+        - Determine the 3-5 most important topics or concepts covered in this content
+        - Focus EXCLUSIVELY on these specific subject matter topics when creating quiz questions
+        - If the content seems to contain irrelevant text or artifacts, IGNORE those completely
+        - Your quiz questions should test understanding of ACTUAL EDUCATIONAL CONCEPTS in the domain
+        - If you're unsure what the main topics are, focus on technical terms, definitions, and formulas you can identify
+        
+        PROCESS:
+        1. Read and analyze the entire content to identify the specific academic subject and topics
+        2. List the 3-5 primary educational concepts or topics being taught
+        3. Create quiz questions ONLY about these specific concepts (not about the lecture itself)
+        4. If you can't identify clear topics, default to general concepts in the apparent subject domain
+        
+        The quiz questions should:
+        - Assess understanding of SPECIFIC technical concepts, theories, methodologies, or frameworks
+        - Test knowledge of precise definitions and applications from the identified domain
+        - Be written as proper educational assessment items that would appear in a formal course exam
+        - Contain academically accurate information about the subject matter
+        
+        For each question:
+        - Create a clear, focused question about a SPECIFIC academic concept identified in the content
+        - Provide exactly 4 options (A, B, C, D) with only one correct answer
+        - Ensure distractors (wrong answers) are plausible but clearly incorrect for experts in the field
+        - All options should be of similar length and detail level
+        
+        Example of BAD question (DO NOT create like this):
+        QUESTION: Which statement about the lecture format is correct?
+        A: The lecture had timestamps
+        B: The professor mentioned deadlines multiple times
+        C: The lecture was structured around administrative topics
+        D: The lecture contained artifacts from the transcript
+        
+        Example of GOOD question:
+        QUESTION: Which characteristic best defines microservices architecture?
+        A: Services with tightly coupled dependencies
+        B: Services with individual responsibilities and independent deployment
+        C: Centralized databases shared by all services
+        D: Services that must be deployed simultaneously
+        
+        Content: {content}
+        
+        Format each question as:
+        QUESTION: [clear educational question about a specific concept]
+        A: [option A]
+        B: [option B]
+        C: [option C]
+        D: [option D]
+        CORRECT: [letter of correct answer: A, B, C, or D]
+        """
+            
+        # Process the document
+        rag_system = RAGSystem()
+        result = rag_system.process_document(content, prompt)
+        
+        if result["success"]:
+            # Parse the generated quiz questions
+            generated_text = result["response"]
+            question_blocks = generated_text.split("QUESTION:")
+            
+            # Skip the first element if it's empty
+            if question_blocks and not question_blocks[0].strip():
+                question_blocks = question_blocks[1:]
+            
+            questions = []
+            for i, block in enumerate(question_blocks[:num_questions]):
+                # Extract question text
+                question_text = block.split("A:")[0].strip() if "A:" in block else block.strip()
+                
+                # Extract options
+                options = []
+                option_parts = {"A:": "B:", "B:": "C:", "C:": "D:", "D:": "CORRECT:"}
+                
+                for start_tag, end_tag in option_parts.items():
+                    if start_tag in block:
+                        start_idx = block.index(start_tag) + len(start_tag)
+                        end_idx = block.index(end_tag) if end_tag in block else len(block)
+                        option_text = block[start_idx:end_idx].strip()
+                        options.append(option_text)
+                
+                # If we don't have exactly 4 options, create placeholders
+                while len(options) < 4:
+                    options.append(f"Option {len(options)+1} for question {i+1}")
+                
+                # Extract correct answer
+                correct_idx = 0  # Default to A
+                if "CORRECT:" in block:
+                    correct_part = block.split("CORRECT:")[1].strip().upper()
+                    if correct_part.startswith('A'):
+                        correct_idx = 0
+                    elif correct_part.startswith('B'):
+                        correct_idx = 1
+                    elif correct_part.startswith('C'):
+                        correct_idx = 2
+                    elif correct_part.startswith('D'):
+                        correct_idx = 3
+                
+                questions.append({
+                    "question": question_text,
+                    "options": options[:4],  # Ensure we have exactly 4 options
+                    "correctIndex": correct_idx
+                })
+            
+            return {
+                "success": True,
+                "questions": questions,
+                "processing_time": result["processing_time"]
+            }
+        else:
+            return JSONResponse(
+                status_code=500,
+                content={"success": False, "error": result["error"]}
+            )
+            
+    except Exception as e:
+        logger.error(f"Error generating quiz: {e}")
+        logger.debug(traceback.format_exc())
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": str(e)}
+        )
+
 if __name__ == "__main__":
     import uvicorn
     logger.info("Starting server directly from app.py")

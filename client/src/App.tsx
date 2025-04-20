@@ -21,6 +21,10 @@ import SignUp from "./pages/SignUp";
 import Dashboard from "./pages/Dashboard";
 import ConfirmEmail from "./pages/ConfirmEmail";
 import Home from "./pages/Home";
+import Lectures from "./pages/Lectures";
+import Assignments from "./pages/Assignments";
+import Quizzes from "./pages/Quizzes";
+import Notecards from "./pages/Notecards";
 // layouts
 import HomeLayout from "./layouts/HomeLayout";
 import DashboardLayout from "./layouts/DashboardLayout";
@@ -92,6 +96,26 @@ const router = createBrowserRouter([
   {
     path: "/dashboard",
     element: <DashboardLayout><Dashboard /></DashboardLayout>,
+    loader: requireAuth,
+  },
+  {
+    path: "/dashboard/lectures",
+    element: <DashboardLayout><Lectures /></DashboardLayout>,
+    loader: requireAuth,
+  },
+  {
+    path: "/dashboard/assignments",
+    element: <DashboardLayout><Assignments /></DashboardLayout>,
+    loader: requireAuth,
+  },
+  {
+    path: "/dashboard/quizzes",
+    element: <DashboardLayout><Quizzes /></DashboardLayout>,
+    loader: requireAuth,
+  },
+  {
+    path: "/dashboard/notecards",
+    element: <DashboardLayout><Notecards /></DashboardLayout>,
     loader: requireAuth,
   },
   {
