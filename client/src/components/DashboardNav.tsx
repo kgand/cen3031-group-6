@@ -47,7 +47,7 @@ const sections = [
   {
     name: "Other",
     tabs: [
-      { name: "Watch Demo", route: "/demo", icon: <IoPlayOutline /> },
+      { name: "Guide", route: "/guide", icon: <IoPlayOutline /> },
       {
         name: "Download Extension",
         route: "/extension",
