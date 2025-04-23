@@ -16,7 +16,7 @@ import "./styles/landing.css";
 import "./styles/dashboard.css";
 import "react-toastify/dist/ReactToastify.css";
 // pages
-import Login from "./pages/Login";
+import Login from "./pages/login";
 import SignUp from "./pages/SignUp";
 import Dashboard from "./pages/Dashboard";
 import ConfirmEmail from "./pages/ConfirmEmail";
@@ -30,6 +30,7 @@ import HomeLayout from "./layouts/HomeLayout";
 import DashboardLayout from "./layouts/DashboardLayout";
 // state
 import { isLoadingUserAtom, userAtom } from "./store";
+import Guide from "./pages/Guide";
 const API_URL = import.meta.env.VITE_API_URL;
 
 // Define a function to fetch user that can be used both by the loader and in components
@@ -116,6 +117,11 @@ const router = createBrowserRouter([
   {
     path: "/dashboard/notecards",
     element: <DashboardLayout><Notecards /></DashboardLayout>,
+    loader: requireAuth,
+  },
+  {
+    path: "/dashboard/guide",
+    element: <DashboardLayout><Guide /></DashboardLayout>,
     loader: requireAuth,
   },
   {
